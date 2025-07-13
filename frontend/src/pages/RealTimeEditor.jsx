@@ -149,7 +149,7 @@ const RealTimeEditor = () => {
 
     try {
       const resumeText = JSON.stringify(resumeData);
-      const response = await fetch('http://localhost:8000/analyze-ats', {
+      const response = await fetch('https://resuscan-resume-analyser.onrender.com/analyze-ats', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
