@@ -14,7 +14,6 @@ from nltk.tokenize import word_tokenize
 import re
 import pdfplumber
 from docx import Document
-import cv2
 from PIL import Image
 import numpy as np
 import io
