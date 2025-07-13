@@ -15,7 +15,6 @@ import re
 import pdfplumber
 from docx import Document
 import cv2
-import pytesseract
 from PIL import Image
 import numpy as np
 import io
@@ -38,7 +37,7 @@ app = FastAPI(title="ResuScan API", description="Resume Analyzer + ATS Matcher")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["https://resuscan-resume-analyser-1.onrender.com", "https://resuscan-resume-analyser.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,67 +65,6 @@ except OSError:
     import subprocess
     subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
     nlp = spacy.load("en_core_web_sm")
-
-# Set Tesseract path for Windows
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-# LinkedIn API Configuration
-LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
-LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
-LINKEDIN_REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI", "http://localhost:5173/linkedin-callback")
-LINKEDIN_API_BASE_URL = "https://api.linkedin.com/v2"
-
-# Resume versioning storage
-RESUME_VERSIONS_FILE = "resume_versions.json"
-resume_versions = {}
-
-# Load existing resume versions
-def load_resume_versions():
-    global resume_versions
-    if os.path.exists(RESUME_VERSIONS_FILE):
-        try:
-            with open(RESUME_VERSIONS_FILE, 'r') as f:
-                resume_versions = json.load(f)
-        except:
-            resume_versions = {}
-
-def save_resume_versions():
-    with open(RESUME_VERSIONS_FILE, 'w') as f:
-        json.dump(resume_versions, f, indent=2)
-
-# Initialize resume versions
-load_resume_versions()
-
-# ATS-friendly resume templates
-RESUME_TEMPLATES = {
-    "professional": {
-        "name": "Professional",
-        "description": "Clean, traditional format suitable for most industries",
-        "font_size": 11,
-        "line_spacing": 1.2,
-        "margins": (0.75, 0.75, 0.75, 0.75),
-        "header_style": "bold",
-        "section_spacing": 0.2
-    },
-    "modern": {
-        "name": "Modern",
-        "description": "Contemporary design with better visual hierarchy",
-        "font_size": 10,
-        "line_spacing": 1.3,
-        "margins": (0.8, 0.8, 0.8, 0.8),
-        "header_style": "bold_underline",
-        "section_spacing": 0.25
-    },
-    "minimal": {
-        "name": "Minimal",
-        "description": "Simple, text-focused format for maximum ATS compatibility",
-        "font_size": 12,
-        "line_spacing": 1.1,
-        "margins": (0.5, 0.5, 0.5, 0.5),
-        "header_style": "bold",
-        "section_spacing": 0.15
-    }
-}
 
 # ATS Keywords database
 ATS_KEYWORDS = {
@@ -944,646 +882,6 @@ def extract_bullet_points(text: str) -> List[str]:
     
     return bullet_points[:10]  # Return top 10 bullet points
 
-@app.post("/analyze-linkedin")
-async def analyze_linkedin_profile(
-    profile_image: UploadFile = File(...),
-    job_title: str = Form(...)
-):
-    """
-    Analyze LinkedIn profile screenshot and provide optimization tips
-    """
-    try:
-        # Read and process the image
-        image_content = await profile_image.read()
-        image = Image.open(io.BytesIO(image_content))
-        
-        # Convert to OpenCV format
-        opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        
-        # Preprocess image for better OCR
-        gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
-        thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-        
-        # Extract text using OCR
-        profile_text = pytesseract.image_to_string(thresh)
-        
-        # Analyze LinkedIn profile components
-        analysis = analyze_linkedin_components(profile_text, job_title)
-        
-        return analysis
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error analyzing LinkedIn profile: {str(e)}")
-
-def analyze_linkedin_components(profile_text: str, job_title: str) -> Dict[str, Any]:
-    """Analyze LinkedIn profile components and provide optimization tips"""
-    
-    # LinkedIn profile sections to analyze
-    sections = {
-        "headline": extract_headline(profile_text),
-        "summary": extract_summary(profile_text),
-        "experience": extract_experience(profile_text),
-        "skills": extract_skills(profile_text),
-        "education": extract_education(profile_text),
-        "connections": extract_connections(profile_text)
-    }
-    
-    # Generate optimization tips
-    optimization_tips = generate_linkedin_optimization_tips(sections, job_title)
-    
-    # Calculate profile strength score
-    profile_score = calculate_profile_strength(sections)
-    
-    return {
-        "profile_score": profile_score,
-        "sections": sections,
-        "optimization_tips": optimization_tips,
-        "visibility_score": calculate_visibility_score(sections),
-        "keyword_optimization": analyze_keyword_optimization(profile_text, job_title)
-    }
-
-def extract_headline(text: str) -> Dict[str, Any]:
-    """Extract and analyze LinkedIn headline"""
-    lines = text.split('\n')
-    headline = ""
-    
-    # Look for headline (usually near the top, after name)
-    for i, line in enumerate(lines):
-        if line.strip() and len(line.strip()) > 10 and len(line.strip()) < 200:
-            if not any(word in line.lower() for word in ['linkedin', 'profile', 'view', 'connect']):
-                headline = line.strip()
-                break
-    
-    return {
-        "text": headline,
-        "length": len(headline),
-        "has_keywords": bool(headline),
-        "has_title": any(word in headline.lower() for word in ['engineer', 'developer', 'manager', 'analyst', 'specialist'])
-    }
-
-def extract_summary(text: str) -> Dict[str, Any]:
-    """Extract and analyze LinkedIn summary/about section"""
-    summary_sections = []
-    in_summary = False
-    
-    lines = text.split('\n')
-    for line in lines:
-        if any(word in line.lower() for word in ['about', 'summary', 'bio']):
-            in_summary = True
-            continue
-        elif in_summary and line.strip():
-            if any(word in line.lower() for word in ['experience', 'education', 'skills', 'contact']):
-                break
-            summary_sections.append(line.strip())
-    
-    summary_text = ' '.join(summary_sections)
-    
-    return {
-        "text": summary_text,
-        "length": len(summary_text),
-        "has_content": len(summary_text) > 50,
-        "word_count": len(summary_text.split())
-    }
-
-def extract_experience(text: str) -> Dict[str, Any]:
-    """Extract and analyze LinkedIn experience section"""
-    experience_entries = []
-    in_experience = False
-    
-    lines = text.split('\n')
-    for line in lines:
-        if any(word in line.lower() for word in ['experience', 'work']):
-            in_experience = True
-            continue
-        elif in_experience and line.strip():
-            if any(word in line.lower() for word in ['education', 'skills', 'certifications']):
-                break
-            if len(line.strip()) > 10:
-                experience_entries.append(line.strip())
-    
-    return {
-        "entries": experience_entries,
-        "count": len(experience_entries),
-        "has_descriptions": any(len(entry) > 50 for entry in experience_entries),
-        "has_dates": any(any(year in entry for year in ['202', '201', '200']) for entry in experience_entries)
-    }
-
-def extract_skills(text: str) -> Dict[str, Any]:
-    """Extract and analyze LinkedIn skills section"""
-    skills = []
-    in_skills = False
-    
-    lines = text.split('\n')
-    for line in lines:
-        if any(word in line.lower() for word in ['skills', 'endorsements']):
-            in_skills = True
-            continue
-        elif in_skills and line.strip():
-            if any(word in line.lower() for word in ['education', 'certifications', 'interests']):
-                break
-            if len(line.strip()) > 2 and len(line.strip()) < 50:
-                skills.append(line.strip())
-    
-    return {
-        "skills": skills,
-        "count": len(skills),
-        "has_endorsements": any('endorsed' in skill.lower() for skill in skills),
-        "has_keywords": len(skills) > 5
-    }
-
-def extract_education(text: str) -> Dict[str, Any]:
-    """Extract and analyze LinkedIn education section"""
-    education_entries = []
-    in_education = False
-    
-    lines = text.split('\n')
-    for line in lines:
-        if any(word in line.lower() for word in ['education', 'university', 'college']):
-            in_education = True
-            continue
-        elif in_education and line.strip():
-            if any(word in line.lower() for word in ['experience', 'skills', 'certifications']):
-                break
-            if len(line.strip()) > 10:
-                education_entries.append(line.strip())
-    
-    return {
-        "entries": education_entries,
-        "count": len(education_entries),
-        "has_degrees": any(any(word in entry.lower() for word in ['bachelor', 'master', 'phd', 'degree']) for entry in education_entries)
-    }
-
-def extract_connections(text: str) -> Dict[str, Any]:
-    """Extract and analyze LinkedIn connections"""
-    connection_count = 0
-    
-    # Look for connection count patterns
-    for line in text.split('\n'):
-        if 'connection' in line.lower():
-            numbers = re.findall(r'\d+', line)
-            if numbers:
-                connection_count = max(connection_count, int(numbers[0]))
-    
-    return {
-        "count": connection_count,
-        "has_connections": connection_count > 0,
-        "is_networked": connection_count > 100
-    }
-
-def generate_linkedin_optimization_tips(sections: Dict[str, Any], job_title: str) -> List[str]:
-    """Generate LinkedIn optimization tips based on profile analysis"""
-    tips = []
-    
-    # Headline optimization
-    headline = sections.get("headline", {})
-    if not headline.get("has_title"):
-        tips.append("Add your current job title to your headline")
-    if headline.get("length", 0) < 50:
-        tips.append("Expand your headline to include key skills and achievements")
-    if not headline.get("has_keywords"):
-        tips.append("Include relevant keywords from your target job in your headline")
-    
-    # Summary optimization
-    summary = sections.get("summary", {})
-    if not summary.get("has_content"):
-        tips.append("Add a compelling summary that tells your professional story")
-    if summary.get("word_count", 0) < 100:
-        tips.append("Expand your summary to 100+ words with key achievements")
-    if summary.get("word_count", 0) > 500:
-        tips.append("Keep your summary concise (200-300 words recommended)")
-    
-    # Experience optimization
-    experience = sections.get("experience", {})
-    if experience.get("count", 0) < 2:
-        tips.append("Add more work experience entries with detailed descriptions")
-    if not experience.get("has_descriptions"):
-        tips.append("Add detailed descriptions to your experience entries")
-    if not experience.get("has_dates"):
-        tips.append("Include dates for all experience entries")
-    
-    # Skills optimization
-    skills = sections.get("skills", {})
-    if skills.get("count", 0) < 10:
-        tips.append("Add more relevant skills to your profile")
-    if not skills.get("has_endorsements"):
-        tips.append("Get endorsements for your key skills from colleagues")
-    
-    # Education optimization
-    education = sections.get("education", {})
-    if education.get("count", 0) == 0:
-        tips.append("Add your educational background")
-    if not education.get("has_degrees"):
-        tips.append("Include your degree and field of study")
-    
-    # Connections optimization
-    connections = sections.get("connections", {})
-    if not connections.get("is_networked"):
-        tips.append("Grow your network by connecting with industry professionals")
-    if connections.get("count", 0) < 50:
-        tips.append("Aim for 500+ connections for better visibility")
-    
-    # General tips
-    tips.append("Use a professional headshot as your profile picture")
-    tips.append("Add a background image that reflects your industry")
-    tips.append("Engage with industry content by liking and commenting")
-    tips.append("Share relevant articles and insights regularly")
-    tips.append("Join and participate in industry-specific LinkedIn groups")
-    
-    return tips[:12]  # Return top 12 tips
-
-def calculate_profile_strength(sections: Dict[str, Any]) -> float:
-    """Calculate overall LinkedIn profile strength score"""
-    score = 0
-    max_score = 100
-    
-    # Headline (20 points)
-    headline = sections.get("headline", {})
-    if headline.get("has_title"):
-        score += 10
-    if headline.get("length", 0) > 50:
-        score += 10
-    
-    # Summary (20 points)
-    summary = sections.get("summary", {})
-    if summary.get("has_content"):
-        score += 10
-    if summary.get("word_count", 0) > 100:
-        score += 10
-    
-    # Experience (25 points)
-    experience = sections.get("experience", {})
-    if experience.get("count", 0) >= 2:
-        score += 10
-    if experience.get("has_descriptions"):
-        score += 10
-    if experience.get("has_dates"):
-        score += 5
-    
-    # Skills (15 points)
-    skills = sections.get("skills", {})
-    if skills.get("count", 0) >= 10:
-        score += 10
-    if skills.get("has_endorsements"):
-        score += 5
-    
-    # Education (10 points)
-    education = sections.get("education", {})
-    if education.get("count", 0) > 0:
-        score += 5
-    if education.get("has_degrees"):
-        score += 5
-    
-    # Connections (10 points)
-    connections = sections.get("connections", {})
-    if connections.get("is_networked"):
-        score += 10
-    
-    return min(score, max_score)
-
-def calculate_visibility_score(sections: Dict[str, Any]) -> float:
-    """Calculate LinkedIn visibility score"""
-    score = 0
-    max_score = 100
-    
-    # Profile completeness (40 points)
-    profile_score = calculate_profile_strength(sections)
-    score += (profile_score / 100) * 40
-    
-    # Network size (30 points)
-    connections = sections.get("connections", {})
-    connection_count = connections.get("count", 0)
-    if connection_count >= 500:
-        score += 30
-    elif connection_count >= 200:
-        score += 20
-    elif connection_count >= 100:
-        score += 10
-    
-    # Activity indicators (30 points)
-    # This would require additional analysis of recent activity
-    score += 15  # Base score for having a profile
-    
-    return min(score, max_score)
-
-def analyze_keyword_optimization(profile_text: str, job_title: str) -> Dict[str, Any]:
-    """Analyze keyword optimization for LinkedIn profile"""
-    profile_lower = profile_text.lower()
-    
-    # Get relevant keywords for the job title
-    job_keywords = ATS_KEYWORDS.get(job_title.lower().replace(" ", "_"), [])
-    
-    # Find matched and missing keywords
-    matched_keywords = [keyword for keyword in job_keywords if keyword.lower() in profile_lower]
-    missing_keywords = [keyword for keyword in job_keywords if keyword.lower() not in profile_lower]
-    
-    # Calculate keyword density
-    keyword_density = len(matched_keywords) / len(job_keywords) if job_keywords else 0
-    
-    return {
-        "matched_keywords": matched_keywords,
-        "missing_keywords": missing_keywords[:10],
-        "keyword_density": round(keyword_density * 100, 2),
-        "total_keywords": len(job_keywords),
-        "keywords_found": len(matched_keywords)
-    }
-
-# LinkedIn API Helper Functions
-def get_linkedin_auth_url_helper() -> str:
-    """Generate LinkedIn OAuth authorization URL"""
-    if not LINKEDIN_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="LinkedIn Client ID not configured")
-    
-    auth_url = f"https://www.linkedin.com/oauth/v2/authorization"
-    params = {
-        "response_type": "code",
-        "client_id": LINKEDIN_CLIENT_ID,
-        "redirect_uri": LINKEDIN_REDIRECT_URI,
-        "scope": "r_liteprofile r_emailaddress w_member_social",
-        "state": "resuscan_linkedin_auth"
-    }
-    
-    query_string = "&".join([f"{k}={v}" for k, v in params.items()])
-    return f"{auth_url}?{query_string}"
-
-def exchange_code_for_token(authorization_code: str) -> Dict[str, Any]:
-    """Exchange authorization code for access token"""
-    if not LINKEDIN_CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="LinkedIn Client Secret not configured")
-    
-    token_url = "https://www.linkedin.com/oauth/v2/accessToken"
-    data = {
-        "grant_type": "authorization_code",
-        "code": authorization_code,
-        "redirect_uri": LINKEDIN_REDIRECT_URI,
-        "client_id": LINKEDIN_CLIENT_ID,
-        "client_secret": LINKEDIN_CLIENT_SECRET
-    }
-    
-    response = requests.post(token_url, data=data)
-    if response.status_code != 200:
-        raise HTTPException(status_code=400, detail="Failed to exchange code for token")
-    
-    return response.json()
-
-def get_linkedin_profile(access_token: str) -> Dict[str, Any]:
-    """Get LinkedIn profile data using access token"""
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "X-Restli-Protocol-Version": "2.0.0"
-    }
-    
-    # Get basic profile
-    profile_url = f"{LINKEDIN_API_BASE_URL}/me"
-    profile_response = requests.get(profile_url, headers=headers)
-    
-    if profile_response.status_code != 200:
-        raise HTTPException(status_code=400, detail="Failed to fetch LinkedIn profile")
-    
-    profile_data = profile_response.json()
-    
-    # Get detailed profile with additional fields
-    detailed_url = f"{LINKEDIN_API_BASE_URL}/me?projection=(id,firstName,lastName,profilePicture,email-address,positions,educations,skills,summary,headline,industry,location,publicProfileUrl)"
-    detailed_response = requests.get(detailed_url, headers=headers)
-    
-    if detailed_response.status_code == 200:
-        detailed_data = detailed_response.json()
-        profile_data.update(detailed_data)
-    
-    return profile_data
-
-def analyze_linkedin_profile_api(profile_data: Dict[str, Any], job_title: str) -> Dict[str, Any]:
-    """Analyze LinkedIn profile data from API"""
-    
-    # Extract profile sections
-    sections = {
-        "headline": extract_headline_from_api(profile_data),
-        "summary": extract_summary_from_api(profile_data),
-        "experience": extract_experience_from_api(profile_data),
-        "skills": extract_skills_from_api(profile_data),
-        "education": extract_education_from_api(profile_data),
-        "connections": extract_connections_from_api(profile_data)
-    }
-    
-    # Generate optimization tips
-    optimization_tips = generate_linkedin_optimization_tips(sections, job_title)
-    
-    # Calculate scores
-    profile_score = calculate_profile_strength(sections)
-    visibility_score = calculate_visibility_score(sections)
-    
-    # Analyze keyword optimization
-    profile_text = create_profile_text_from_api(profile_data)
-    keyword_optimization = analyze_keyword_optimization(profile_text, job_title)
-    
-    return {
-        "profile_score": profile_score,
-        "sections": sections,
-        "optimization_tips": optimization_tips,
-        "visibility_score": visibility_score,
-        "keyword_optimization": keyword_optimization,
-        "profile_data": profile_data
-    }
-
-def extract_headline_from_api(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract headline from LinkedIn API data"""
-    headline = profile_data.get("headline", "")
-    
-    return {
-        "text": headline,
-        "length": len(headline),
-        "has_keywords": bool(headline),
-        "has_title": any(word in headline.lower() for word in ['engineer', 'developer', 'manager', 'analyst', 'specialist'])
-    }
-
-def extract_summary_from_api(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract summary from LinkedIn API data"""
-    summary = profile_data.get("summary", "")
-    
-    return {
-        "text": summary,
-        "length": len(summary),
-        "has_content": len(summary) > 50,
-        "word_count": len(summary.split())
-    }
-
-def extract_experience_from_api(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract experience from LinkedIn API data"""
-    positions = profile_data.get("positions", {}).get("values", [])
-    experience_entries = []
-    
-    for position in positions:
-        entry = {
-            "title": position.get("title", ""),
-            "company": position.get("companyName", ""),
-            "dates": f"{position.get('startDate', {}).get('year', '')} - {position.get('endDate', {}).get('year', 'Present')}",
-            "description": position.get("summary", "")
-        }
-        experience_entries.append(entry)
-    
-    return {
-        "entries": experience_entries,
-        "count": len(experience_entries),
-        "has_descriptions": any(len(entry.get("description", "")) > 50 for entry in experience_entries),
-        "has_dates": any(entry.get("dates") for entry in experience_entries)
-    }
-
-def extract_skills_from_api(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract skills from LinkedIn API data"""
-    skills_data = profile_data.get("skills", {}).get("values", [])
-    skills = [skill.get("skill", {}).get("name", "") for skill in skills_data]
-    
-    return {
-        "skills": skills,
-        "count": len(skills),
-        "has_endorsements": any(skill.get("numEndorsements", 0) > 0 for skill in skills_data),
-        "has_keywords": len(skills) > 5
-    }
-
-def extract_education_from_api(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract education from LinkedIn API data"""
-    education_data = profile_data.get("educations", {}).get("values", [])
-    education_entries = []
-    
-    for edu in education_data:
-        entry = {
-            "degree": edu.get("degree", ""),
-            "school": edu.get("schoolName", ""),
-            "dates": f"{edu.get('startDate', {}).get('year', '')} - {edu.get('endDate', {}).get('year', '')}"
-        }
-        education_entries.append(entry)
-    
-    return {
-        "entries": education_entries,
-        "count": len(education_entries),
-        "has_degrees": any(any(word in entry.get("degree", "").lower() for word in ['bachelor', 'master', 'phd', 'degree']) for entry in education_entries)
-    }
-
-def extract_connections_from_api(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract connections from LinkedIn API data"""
-    # Note: Connection count requires additional API permissions
-    # For now, we'll provide a placeholder
-    return {
-        "count": 0,  # Would need additional API call to get actual count
-        "has_connections": True,
-        "is_networked": True
-    }
-
-def create_profile_text_from_api(profile_data: Dict[str, Any]) -> str:
-    """Create text representation of LinkedIn profile from API data"""
-    text_parts = []
-    
-    # Add headline
-    if profile_data.get("headline"):
-        text_parts.append(profile_data["headline"])
-    
-    # Add summary
-    if profile_data.get("summary"):
-        text_parts.append(profile_data["summary"])
-    
-    # Add experience
-    positions = profile_data.get("positions", {}).get("values", [])
-    for position in positions:
-        text_parts.append(f"{position.get('title', '')} at {position.get('companyName', '')}")
-        if position.get("summary"):
-            text_parts.append(position["summary"])
-    
-    # Add skills
-    skills_data = profile_data.get("skills", {}).get("values", [])
-    skills = [skill.get("skill", {}).get("name", "") for skill in skills_data]
-    if skills:
-        text_parts.append(", ".join(skills))
-    
-    return " ".join(text_parts)
-
-# Resume Versioning Endpoints
-@app.post("/save-resume-version")
-async def save_resume_version(
-    resume_data: str = Form(...),
-    version_name: str = Form(...),
-    job_title: str = Form(...)
-):
-    """Save a new version of resume"""
-    try:
-        # Parse the JSON string back to dict
-        resume_data_dict = json.loads(resume_data)
-        
-        version_id = str(uuid.uuid4())
-        timestamp = datetime.now().isoformat()
-        
-        version_data = {
-            "id": version_id,
-            "name": version_name,
-            "job_title": job_title,
-            "resume_data": resume_data_dict,
-            "created_at": timestamp,
-            "updated_at": timestamp
-        }
-        
-        resume_versions[version_id] = version_data
-        save_resume_versions()
-        
-        return {
-            "success": True,
-            "version_id": version_id,
-            "message": f"Resume version '{version_name}' saved successfully"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error saving resume version: {str(e)}")
-
-@app.get("/get-resume-versions")
-async def get_resume_versions():
-    """Get all saved resume versions"""
-    try:
-        versions = []
-        for version_id, version_data in resume_versions.items():
-            versions.append({
-                "id": version_id,
-                "name": version_data["name"],
-                "job_title": version_data["job_title"],
-                "created_at": version_data["created_at"],
-                "updated_at": version_data["updated_at"]
-            })
-        
-        # Sort by updated_at (newest first)
-        versions.sort(key=lambda x: x["updated_at"], reverse=True)
-        
-        return {
-            "success": True,
-            "versions": versions
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving resume versions: {str(e)}")
-
-@app.get("/get-resume-version/{version_id}")
-async def get_resume_version(version_id: str):
-    """Get a specific resume version"""
-    try:
-        if version_id not in resume_versions:
-            raise HTTPException(status_code=404, detail="Resume version not found")
-        
-        return {
-            "success": True,
-            "version": resume_versions[version_id]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving resume version: {str(e)}")
-
-@app.delete("/delete-resume-version/{version_id}")
-async def delete_resume_version(version_id: str):
-    """Delete a resume version"""
-    try:
-        if version_id not in resume_versions:
-            raise HTTPException(status_code=404, detail="Resume version not found")
-        
-        deleted_version = resume_versions.pop(version_id)
-        save_resume_versions()
-        
-        return {
-            "success": True,
-            "message": f"Resume version '{deleted_version['name']}' deleted successfully"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting resume version: {str(e)}")
-
 # PDF Resume Builder Endpoints
 @app.get("/get-resume-templates")
 async def get_resume_templates():
@@ -1805,72 +1103,95 @@ async def save_and_generate_pdf(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving and generating PDF: {str(e)}")
 
-# LinkedIn API Endpoints
-@app.get("/linkedin/auth-url")
-async def get_linkedin_auth_url():
-    """Get LinkedIn OAuth authorization URL"""
-    try:
-        auth_url = get_linkedin_auth_url_helper()
-        return {
-            "success": True,
-            "auth_url": auth_url
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating auth URL: {str(e)}")
-
-@app.post("/linkedin/callback")
-async def linkedin_callback(
-    code: str = Form(...),
-    state: str = Form(...)
-):
-    """Handle LinkedIn OAuth callback"""
-    try:
-        # Exchange code for access token
-        token_data = exchange_code_for_token(code)
-        access_token = token_data.get("access_token")
-        
-        if not access_token:
-            raise HTTPException(status_code=400, detail="Failed to get access token")
-        
-        return {
-            "success": True,
-            "access_token": access_token,
-            "expires_in": token_data.get("expires_in", 3600)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing callback: {str(e)}")
-
-@app.post("/linkedin/analyze-profile")
-async def analyze_linkedin_profile_api_endpoint(
-    access_token: str = Form(...),
+# Resume Versioning Endpoints
+@app.post("/save-resume-version")
+async def save_resume_version(
+    resume_data: str = Form(...),
+    version_name: str = Form(...),
     job_title: str = Form(...)
 ):
-    """Analyze LinkedIn profile using API data"""
+    """Save a new version of resume"""
     try:
-        # Get profile data from LinkedIn API
-        profile_data = get_linkedin_profile(access_token)
+        # Parse the JSON string back to dict
+        resume_data_dict = json.loads(resume_data)
         
-        # Analyze the profile
-        analysis = analyze_linkedin_profile_api(profile_data, job_title)
+        version_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        version_data = {
+            "id": version_id,
+            "name": version_name,
+            "job_title": job_title,
+            "resume_data": resume_data_dict,
+            "created_at": timestamp,
+            "updated_at": timestamp
+        }
+        
+        resume_versions[version_id] = version_data
+        save_resume_versions()
         
         return {
             "success": True,
-            "analysis": analysis
+            "version_id": version_id,
+            "message": f"Resume version '{version_name}' saved successfully"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error analyzing LinkedIn profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error saving resume version: {str(e)}")
 
-@app.get("/linkedin/profile-data")
-async def get_linkedin_profile_data(access_token: str):
-    """Get raw LinkedIn profile data"""
+@app.get("/get-resume-versions")
+async def get_resume_versions():
+    """Get all saved resume versions"""
     try:
-        profile_data = get_linkedin_profile(access_token)
+        versions = []
+        for version_id, version_data in resume_versions.items():
+            versions.append({
+                "id": version_id,
+                "name": version_data["name"],
+                "job_title": version_data["job_title"],
+                "created_at": version_data["created_at"],
+                "updated_at": version_data["updated_at"]
+            })
+        
+        # Sort by updated_at (newest first)
+        versions.sort(key=lambda x: x["updated_at"], reverse=True)
+        
         return {
             "success": True,
-            "profile_data": profile_data
+            "versions": versions
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching profile data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving resume versions: {str(e)}")
+
+@app.get("/get-resume-version/{version_id}")
+async def get_resume_version(version_id: str):
+    """Get a specific resume version"""
+    try:
+        if version_id not in resume_versions:
+            raise HTTPException(status_code=404, detail="Resume version not found")
+        
+        return {
+            "success": True,
+            "version": resume_versions[version_id]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving resume version: {str(e)}")
+
+@app.delete("/delete-resume-version/{version_id}")
+async def delete_resume_version(version_id: str):
+    """Delete a resume version"""
+    try:
+        if version_id not in resume_versions:
+            raise HTTPException(status_code=404, detail="Resume version not found")
+        
+        deleted_version = resume_versions.pop(version_id)
+        save_resume_versions()
+        
+        return {
+            "success": True,
+            "message": f"Resume version '{deleted_version['name']}' deleted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting resume version: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
