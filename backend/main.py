@@ -14,7 +14,6 @@ from nltk.tokenize import word_tokenize
 import re
 import pdfplumber
 from docx import Document
-import cv2
 from PIL import Image
 import numpy as np
 import io
@@ -37,7 +36,7 @@ app = FastAPI(title="ResuScan API", description="Resume Analyzer + ATS Matcher")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://resuscan-resume-analyser-1.onrender.com", "https://resuscan-resume-analyser.onrender.com"],
+    allow_origins=["https://resuscan-resume-analyser-1.onrender.com", "https://resuscan-resume-analyser.onrender.com",'http://localhost:5173'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
