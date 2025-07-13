@@ -6,5 +6,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: process.env.PORT || 5173,
+    allowedHosts: [
+      'resuscan-resume-analyser-1.onrender.com',
+      'https://resuscan-resume-analyser.onrender.com'
+    ]
   },
 })
