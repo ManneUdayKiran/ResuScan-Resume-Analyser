@@ -9,7 +9,8 @@ export default defineConfig({
     allowedHosts: [
       'resuscan-resume-analyser-1.onrender.com',
       'https://resuscan-resume-analyser.onrender.com',
-      'https://melodious-sundae-7cef94.netlify.app/analyze'
+      'https://melodious-sundae-7cef94.netlify.app/analyze',
+      'https://frontend-two-pi-49.vercel.app'
     ]
   },
 })

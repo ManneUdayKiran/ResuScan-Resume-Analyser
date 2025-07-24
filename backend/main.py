@@ -36,7 +36,7 @@ app = FastAPI(title="ResuScan API", description="Resume Analyzer + ATS Matcher")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://resuscan-resume-analyser-1.onrender.com", "https://resuscan-resume-analyser.onrender.com","https://melodious-sundae-7cef94.netlify.app"],
+    allow_origins=["https://resuscan-resume-analyser-1.onrender.com", "https://resuscan-resume-analyser.onrender.com","https://frontend-two-pi-49.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
