@@ -1,42 +1,204 @@
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  min-height: 100vh;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Custom transitions and animations */
+.ant-card {
+  transition: all 0.3s ease !important;
+  border-radius: 12px !important;
 }
 
-@keyframes logo-spin {
+.ant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.ant-btn {
+  transition: all 0.3s ease !important;
+}
+
+.ant-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Header responsive styles */
+@media (max-width: 767px) {
+  .ant-layout-header {
+    padding: 0 16px !important;
+  }
+
+  .ant-typography h3.ant-typography {
+    font-size: 20px !important;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 576px) {
+  .hero-section h1.ant-typography {
+    font-size: 2.5rem !important;
+  }
+
+  .hero-section h2.ant-typography {
+    font-size: 1.5rem !important;
+  }
+
+  .hero-section .ant-typography {
+    font-size: 1rem !important;
+  }
+
+  .ant-card {
+    margin-bottom: 16px;
+  }
+
+  .section-padding {
+    padding: 40px 16px !important;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Loading animations */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+/* Custom gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* Responsive typography */
+@media (max-width: 768px) {
+  .ant-typography h1 {
+    font-size: 2rem !important;
+  }
+
+  .ant-typography h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .ant-typography h3 {
+    font-size: 1.25rem !important;
+  }
+}
+
+/* Custom spacing */
+.section-spacing {
+  margin: 80px 0;
+}
+
+@media (max-width: 768px) {
+  .section-spacing {
+    margin: 40px 0;
+  }
+}
+
+/* Animation utilities */
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(30px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+.scale-on-hover {
+  transition: transform 0.3s ease;
+}
+
+.scale-on-hover:hover {
+  transform: scale(1.05);
+}
+
+/* Custom button styles */
+.hero-button {
+  height: 48px !important;
+  padding: 0 32px !important;
+  font-size: 1.1rem !important;
+  font-weight: bold !important;
+  border-radius: 8px !important;
+}
+
+.secondary-button {
+  height: 44px !important;
+  padding: 0 24px !important;
+  border-radius: 6px !important;
+}
+
+/* Glass morphism effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.15) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive container */
+.responsive-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .responsive-container {
+    padding: 0 16px;
   }
 }
 
-.card {
-  padding: 2em;
+/* Enhanced shadows */
+.shadow-light {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
-.read-the-docs {
-  color: #888;
+.shadow-medium {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.shadow-heavy {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

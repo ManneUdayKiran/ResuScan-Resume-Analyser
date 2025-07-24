@@ -1,52 +1,51 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Box,
-  Paper,
+  Row,
+  Col,
   Typography,
-  TextField,
-  Button,
-  Grid,
   Card,
-  CardContent,
+  Input,
+  Button,
+  Form,
+  Space,
   Divider,
-  IconButton,
-  Chip,
-  Alert,
-  Snackbar,
-  FormControl,
-  InputLabel,
   Select,
-  MenuItem,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  Modal,
+  List,
+  Tag,
+  Progress,
+  Alert,
   Tooltip,
-  Fab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
-} from '@mui/material';
+  FloatButton,
+  Switch,
+  message,
+  Layout
+} from 'antd';
 import {
-  Add as AddIcon,
-  Save as SaveIcon,
-  Download as DownloadIcon,
-  Visibility as VisibilityIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ExpandMore as ExpandMoreIcon,
-  ContentCopy as CopyIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
-  FormatBold as FormatBoldIcon,
-  FormatItalic as FormatItalicIcon,
-  FormatListBulleted as FormatListBulletedIcon,
-  FormatListNumbered as FormatListNumberedIcon,
-  Undo as UndoIcon,
-  Redo as RedoIcon
-} from '@mui/icons-material';
+  PlusOutlined,
+  SaveOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  CopyOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  InfoCircleOutlined,
+  BoldOutlined,
+  ItalicOutlined,
+  UnorderedListOutlined,
+  OrderedListOutlined,
+  UndoOutlined,
+  RedoOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import { resumeBuilderService } from '../services/resumeBuilderService';
+
+const { Title, Paragraph, Text } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+const { Content } = Layout;
 
 const RealTimeEditor = () => {
   const [resumeData, setResumeData] = useState({
@@ -66,10 +65,9 @@ const RealTimeEditor = () => {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('professional');
   const [versions, setVersions] = useState([]);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [versionName, setVersionName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({
     atsScore: 0,
@@ -78,35 +76,32 @@ const RealTimeEditor = () => {
     tips: []
   });
 
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
   const [autoSave, setAutoSave] = useState(true);
-
   const previewRef = useRef(null);
 
   useEffect(() => {
     loadTemplates();
     loadVersions();
+    
     // Auto-save every 30 seconds
     const interval = setInterval(() => {
       if (autoSave && resumeData.name) {
         handleAutoSave();
       }
     }, 30000);
+    
     return () => clearInterval(interval);
   }, [resumeData, autoSave]);
 
   useEffect(() => {
     // Generate feedback when resume data changes
     generateFeedback();
-    // Add to history
-    addToHistory();
   }, [resumeData]);
 
   const loadTemplates = async () => {
     try {
       const response = await resumeBuilderService.getTemplates();
-      setTemplates(response.templates);
+      setTemplates(response.templates || []);
     } catch (error) {
       console.error('Error loading templates:', error);
     }
@@ -115,79 +110,60 @@ const RealTimeEditor = () => {
   const loadVersions = async () => {
     try {
       const response = await resumeBuilderService.getVersions();
-      setVersions(response.versions);
+      setVersions(response.versions || []);
     } catch (error) {
       console.error('Error loading versions:', error);
     }
   };
 
-  const addToHistory = () => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(JSON.stringify(resumeData));
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  };
+  const generateFeedback = () => {
+    // Simulate real-time feedback generation
+    let score = 0;
+    const suggestions = [];
+    const warnings = [];
+    const tips = [];
 
-  const undo = () => {
-    if (historyIndex > 0) {
-      const prevData = JSON.parse(history[historyIndex - 1]);
-      setResumeData(prevData);
-      setHistoryIndex(historyIndex - 1);
-    }
-  };
+    // Check for basic information
+    if (resumeData.name) score += 10;
+    if (resumeData.email) score += 10;
+    if (resumeData.phone) score += 5;
+    if (resumeData.summary && resumeData.summary.length > 50) score += 15;
+    else if (!resumeData.summary) suggestions.push("Add a professional summary to improve your ATS score");
 
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const nextData = JSON.parse(history[historyIndex + 1]);
-      setResumeData(nextData);
-      setHistoryIndex(historyIndex + 1);
-    }
-  };
-
-  const generateFeedback = async () => {
-    if (!resumeData.name) return;
-
-    try {
-      const resumeText = JSON.stringify(resumeData);
-      const response = await fetch('https://resuscan-resume-analyser.onrender.com/analyze-ats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          resume_text: resumeText,
-          job_title: jobTitle || 'Software Engineer'
-        })
+    // Check experience
+    if (resumeData.experience.length > 0) {
+      score += 20;
+      resumeData.experience.forEach((exp, index) => {
+        if (!exp.description || exp.description.length < 50) {
+          warnings.push(`Experience ${index + 1}: Add more detailed description with achievements`);
+        }
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFeedback({
-          atsScore: data.ats_score,
-          suggestions: data.improvement_tips || [],
-          warnings: [],
-          tips: []
-        });
-      }
-    } catch (error) {
-      console.error('Error generating feedback:', error);
+    } else {
+      warnings.push("Add work experience to strengthen your resume");
     }
-  };
 
-  const handleAutoSave = async () => {
-    if (!resumeData.name) return;
-    
-    try {
-      const autoSaveName = `Auto-save ${new Date().toLocaleTimeString()}`;
-      await resumeBuilderService.saveVersion(resumeData, autoSaveName, jobTitle || 'General');
-      setAlert({
-        open: true,
-        message: 'Auto-saved successfully!',
-        severity: 'info'
-      });
-    } catch (error) {
-      console.error('Auto-save failed:', error);
+    // Check education
+    if (resumeData.education.length > 0) score += 10;
+
+    // Check skills
+    if (resumeData.skills.length >= 5) score += 15;
+    else suggestions.push("Add more relevant skills to reach the recommended minimum of 5");
+
+    // Add tips based on score
+    if (score < 50) {
+      tips.push("Your resume needs significant improvement. Focus on adding complete sections.");
+    } else if (score < 75) {
+      tips.push("Good progress! Add more details to boost your ATS compatibility.");
+    } else {
+      tips.push("Excellent! Your resume is well-structured and ATS-friendly.");
     }
+
+    setFeedback({
+      atsScore: Math.min(score, 100),
+      suggestions,
+      warnings,
+      tips
+    });
   };
 
   const handleInputChange = (field, value) => {
@@ -197,726 +173,379 @@ const RealTimeEditor = () => {
     }));
   };
 
-  const handleArrayChange = (field, index, value) => {
-    setResumeData(prev => ({
-      ...prev,
-      [field]: prev[field].map((item, i) => i === index ? value : item)
-    }));
+  const handleAutoSave = async () => {
+    try {
+      await resumeBuilderService.autoSave(resumeData);
+      message.success('Auto-saved', 1);
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    }
   };
 
-  const addArrayItem = (field) => {
-    setResumeData(prev => ({
-      ...prev,
-      [field]: [...prev[field], {}]
-    }));
-  };
-
-  const removeArrayItem = (field, index) => {
-    setResumeData(prev => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleSaveVersion = async () => {
-    if (!versionName.trim() || !jobTitle.trim()) {
-      setAlert({
-        open: true,
-        message: 'Please provide both version name and job title',
-        severity: 'error'
-      });
+  const handleSave = async () => {
+    if (!versionName || !jobTitle) {
+      message.error('Please provide version name and job title');
       return;
     }
 
     setLoading(true);
     try {
-      await resumeBuilderService.saveVersion(resumeData, versionName, jobTitle);
-      setAlert({
-        open: true,
-        message: 'Resume version saved successfully!',
-        severity: 'success'
+      await resumeBuilderService.saveVersion({
+        ...resumeData,
+        versionName,
+        jobTitle,
+        template: selectedTemplate
       });
-      setSaveDialogOpen(false);
+      message.success('Resume version saved successfully!');
+      setSaveModalVisible(false);
       setVersionName('');
       setJobTitle('');
       loadVersions();
     } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error saving resume version',
-        severity: 'error'
-      });
+      message.error('Error saving resume version');
+      console.error('Save error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGeneratePDF = async () => {
+  const handleExport = async () => {
     setLoading(true);
     try {
-      const response = await resumeBuilderService.generatePDF(resumeData, selectedTemplate);
-      const blob = new Blob([response], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `resume_${new Date().toISOString().slice(0, 10)}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      
-      setAlert({
-        open: true,
-        message: 'PDF generated and downloaded successfully!',
-        severity: 'success'
-      });
+      await resumeBuilderService.exportToPDF(resumeData, selectedTemplate);
+      message.success('PDF exported successfully!');
     } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error generating PDF',
-        severity: 'error'
-      });
+      message.error('Error exporting PDF');
+      console.error('Export error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadVersion = async (versionId) => {
-    try {
-      const response = await resumeBuilderService.getVersion(versionId);
-      setResumeData(response.version.resume_data);
-      setJobTitle(response.version.job_title);
-      setAlert({
-        open: true,
-        message: 'Resume version loaded successfully!',
-        severity: 'success'
-      });
-    } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error loading resume version',
-        severity: 'error'
-      });
-    }
+  const getScoreColor = (score) => {
+    if (score >= 75) return '#52c41a';
+    if (score >= 50) return '#faad14';
+    return '#ff4d4f';
   };
 
-  const deleteVersion = async (versionId) => {
-    try {
-      await resumeBuilderService.deleteVersion(versionId);
-      setAlert({
-        open: true,
-        message: 'Resume version deleted successfully!',
-        severity: 'success'
-      });
-      loadVersions();
-    } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error deleting resume version',
-        severity: 'error'
-      });
-    }
-  };
+  const renderFeedbackPanel = () => (
+    <Card title="Real-Time Feedback" style={{ marginBottom: 24 }}>
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Progress
+            type="circle"
+            percent={feedback.atsScore}
+            format={percent => `${percent}%`}
+            strokeColor={getScoreColor(feedback.atsScore)}
+            size={80}
+          />
+          <Text style={{ display: 'block', marginTop: 8 }}>ATS Compatibility</Text>
+        </div>
 
-  const getFeedbackColor = (score) => {
-    if (score >= 80) return 'success';
-    if (score >= 60) return 'warning';
-    return 'error';
-  };
+        <Divider />
 
-  const getFeedbackIcon = (score) => {
-    if (score >= 80) return <CheckCircleIcon />;
-    if (score >= 60) return <WarningIcon />;
-    return <InfoIcon />;
-  };
+        {feedback.warnings.length > 0 && (
+          <div>
+            <Title level={5}>
+              <WarningOutlined style={{ color: '#faad14' }} /> Warnings
+            </Title>
+            {feedback.warnings.map((warning, index) => (
+              <Alert
+                key={index}
+                message={warning}
+                type="warning"
+                size="small"
+                style={{ marginBottom: 8 }}
+                showIcon
+              />
+            ))}
+          </div>
+        )}
+
+        {feedback.suggestions.length > 0 && (
+          <div>
+            <Title level={5}>
+              <InfoCircleOutlined style={{ color: '#1890ff' }} /> Suggestions
+            </Title>
+            {feedback.suggestions.map((suggestion, index) => (
+              <Alert
+                key={index}
+                message={suggestion}
+                type="info"
+                size="small"
+                style={{ marginBottom: 8 }}
+                showIcon
+              />
+            ))}
+          </div>
+        )}
+
+        {feedback.tips.length > 0 && (
+          <div>
+            <Title level={5}>
+              <CheckCircleOutlined style={{ color: '#52c41a' }} /> Tips
+            </Title>
+            {feedback.tips.map((tip, index) => (
+              <Alert
+                key={index}
+                message={tip}
+                type="success"
+                size="small"
+                style={{ marginBottom: 8 }}
+                showIcon
+              />
+            ))}
+          </div>
+        )}
+      </Space>
+    </Card>
+  );
+
+  const renderEditor = () => (
+    <Space direction="vertical" style={{ width: '100%' }}>
+      {/* Personal Information */}
+      <Card title="Personal Information" size="small">
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Input
+              placeholder="Full Name"
+              value={resumeData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              style={{ marginBottom: 8 }}
+            />
+          </Col>
+          <Col xs={24} md={12}>
+            <Input
+              placeholder="Email"
+              type="email"
+              value={resumeData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              style={{ marginBottom: 8 }}
+            />
+          </Col>
+          <Col xs={24} md={12}>
+            <Input
+              placeholder="Phone"
+              value={resumeData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              style={{ marginBottom: 8 }}
+            />
+          </Col>
+          <Col xs={24} md={12}>
+            <Input
+              placeholder="Location"
+              value={resumeData.location}
+              onChange={(e) => handleInputChange('location', e.target.value)}
+              style={{ marginBottom: 8 }}
+            />
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Professional Summary */}
+      <Card title="Professional Summary" size="small">
+        <TextArea
+          rows={4}
+          placeholder="Write a compelling professional summary..."
+          value={resumeData.summary}
+          onChange={(e) => handleInputChange('summary', e.target.value)}
+        />
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          Characters: {resumeData.summary.length} (Recommended: 150-300)
+        </Text>
+      </Card>
+
+      {/* Skills */}
+      <Card title="Skills" size="small">
+        <Input.Search
+          placeholder="Add a skill"
+          enterButton={<PlusOutlined />}
+          onSearch={(value) => {
+            if (value && !resumeData.skills.includes(value)) {
+              handleInputChange('skills', [...resumeData.skills, value]);
+            }
+          }}
+          style={{ marginBottom: 16 }}
+        />
+        <Space wrap>
+          {resumeData.skills.map((skill, index) => (
+            <Tag
+              key={index}
+              closable
+              onClose={() => {
+                const newSkills = resumeData.skills.filter((_, i) => i !== index);
+                handleInputChange('skills', newSkills);
+              }}
+              color="blue"
+            >
+              {skill}
+            </Tag>
+          ))}
+        </Space>
+      </Card>
+    </Space>
+  );
+
+  const renderPreview = () => (
+    <Card title="Live Preview" style={{ minHeight: 600 }}>
+      <div style={{ padding: 24, backgroundColor: '#fff', minHeight: 500 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <Title level={2} style={{ margin: 0 }}>{resumeData.name || 'Your Name'}</Title>
+          <Text>{resumeData.email} | {resumeData.phone} | {resumeData.location}</Text>
+        </div>
+        
+        {resumeData.summary && (
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4}>Professional Summary</Title>
+            <Paragraph>{resumeData.summary}</Paragraph>
+          </div>
+        )}
+        
+        {resumeData.skills.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4}>Skills</Title>
+            <Space wrap>
+              {resumeData.skills.map((skill, index) => (
+                <Tag key={index} color="blue">{skill}</Tag>
+              ))}
+            </Space>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
 
   return (
-    <Box sx={{ py: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Real-Time Resume Editor
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {/* Editor Panel */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, mb: 3, height: '80vh', overflow: 'auto' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h6">
-                Editor
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Tooltip title="Undo">
-                  <IconButton onClick={undo} disabled={historyIndex <= 0}>
-                    <UndoIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Redo">
-                  <IconButton onClick={redo} disabled={historyIndex >= history.length - 1}>
-                    <RedoIcon />
-                  </IconButton>
-                </Tooltip>
+    <Content style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <Title level={2}>Real-Time Resume Editor</Title>
+          <Paragraph style={{ fontSize: '1.1rem', color: '#666' }}>
+            Edit your resume with live preview and instant ATS feedback
+          </Paragraph>
+        </div>
+
+        {/* Controls */}
+        <Card style={{ marginBottom: 24 }}>
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} md={8}>
+              <Space>
+                <Switch
+                  checked={previewMode}
+                  onChange={setPreviewMode}
+                  checkedChildren="Preview"
+                  unCheckedChildren="Edit"
+                />
+                <Switch
+                  checked={autoSave}
+                  onChange={setAutoSave}
+                  checkedChildren="Auto-save"
+                  unCheckedChildren="Manual"
+                />
+              </Space>
+            </Col>
+            <Col xs={24} md={8}>
+              <Select
+                placeholder="Select Template"
+                value={selectedTemplate}
+                onChange={setSelectedTemplate}
+                style={{ width: '100%' }}
+              >
+                <Option value="professional">Professional</Option>
+                <Option value="modern">Modern</Option>
+                <Option value="creative">Creative</Option>
+                <Option value="minimal">Minimal</Option>
+              </Select>
+            </Col>
+            <Col xs={24} md={8}>
+              <Space>
                 <Button
-                  variant={previewMode ? "contained" : "outlined"}
-                  startIcon={<VisibilityIcon />}
-                  onClick={() => setPreviewMode(!previewMode)}
-                  size="small"
+                  icon={<SaveOutlined />}
+                  onClick={() => setSaveModalVisible(true)}
                 >
-                  {previewMode ? 'Edit' : 'Preview'}
+                  Save
                 </Button>
-              </Box>
-            </Box>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleExport}
+                  loading={loading}
+                >
+                  Export
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
 
-            {!previewMode ? (
-              <Box>
-                {/* Basic Information */}
-                <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle1">Basic Information</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Full Name"
-                          value={resumeData.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          margin="normal"
-                          size="small"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Email"
-                          value={resumeData.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          margin="normal"
-                          size="small"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Phone"
-                          value={resumeData.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
-                          margin="normal"
-                          size="small"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Location"
-                          value={resumeData.location}
-                          onChange={(e) => handleInputChange('location', e.target.value)}
-                          margin="normal"
-                          size="small"
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          fullWidth
-                          label="LinkedIn URL"
-                          value={resumeData.linkedin}
-                          onChange={(e) => handleInputChange('linkedin', e.target.value)}
-                          margin="normal"
-                          size="small"
-                        />
-                      </Grid>
-                    </Grid>
-                  </AccordionDetails>
-                </Accordion>
+        <Row gutter={[24, 24]}>
+          {/* Editor/Preview Section */}
+          <Col xs={24} lg={16}>
+            {previewMode ? renderPreview() : renderEditor()}
+          </Col>
 
-                {/* Summary */}
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle1">Professional Summary</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <TextField
-                      fullWidth
-                      label="Summary"
-                      multiline
-                      rows={4}
-                      value={resumeData.summary}
-                      onChange={(e) => handleInputChange('summary', e.target.value)}
-                      margin="normal"
-                      size="small"
-                    />
-                  </AccordionDetails>
-                </Accordion>
+          {/* Feedback Panel */}
+          <Col xs={24} lg={8}>
+            {renderFeedbackPanel()}
+          </Col>
+        </Row>
 
-                {/* Experience */}
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle1">Work Experience</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    {resumeData.experience.map((exp, index) => (
-                      <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              label="Job Title"
-                              value={exp.title || ''}
-                              onChange={(e) => handleArrayChange('experience', index, { ...exp, title: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              label="Company"
-                              value={exp.company || ''}
-                              onChange={(e) => handleArrayChange('experience', index, { ...exp, company: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              label="Dates"
-                              value={exp.dates || ''}
-                              onChange={(e) => handleArrayChange('experience', index, { ...exp, dates: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={12}>
-                            <TextField
-                              fullWidth
-                              label="Description"
-                              multiline
-                              rows={3}
-                              value={exp.description || ''}
-                              onChange={(e) => handleArrayChange('experience', index, { ...exp, description: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                        </Grid>
-                        <Button
-                          startIcon={<DeleteIcon />}
-                          onClick={() => removeArrayItem('experience', index)}
-                          color="error"
-                          size="small"
-                        >
-                          Remove
-                        </Button>
-                      </Box>
-                    ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={() => addArrayItem('experience')}
-                      variant="outlined"
-                      size="small"
-                    >
-                      Add Experience
-                    </Button>
-                  </AccordionDetails>
-                </Accordion>
+        {/* Save Modal */}
+        <Modal
+          title="Save Resume Version"
+          open={saveModalVisible}
+          onOk={handleSave}
+          onCancel={() => setSaveModalVisible(false)}
+          confirmLoading={loading}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <div>
+              <label>Version Name:</label>
+              <Input
+                value={versionName}
+                onChange={(e) => setVersionName(e.target.value)}
+                placeholder="e.g., Software Engineer v1"
+              />
+            </div>
+            <div>
+              <label>Target Job Title:</label>
+              <Input
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g., Senior Software Engineer"
+              />
+            </div>
+          </Space>
+        </Modal>
 
-                {/* Education */}
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle1">Education</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    {resumeData.education.map((edu, index) => (
-                      <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              label="Degree"
-                              value={edu.degree || ''}
-                              onChange={(e) => handleArrayChange('education', index, { ...edu, degree: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              label="School"
-                              value={edu.school || ''}
-                              onChange={(e) => handleArrayChange('education', index, { ...edu, school: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={12}>
-                            <TextField
-                              fullWidth
-                              label="Dates"
-                              value={edu.dates || ''}
-                              onChange={(e) => handleArrayChange('education', index, { ...edu, dates: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                        </Grid>
-                        <Button
-                          startIcon={<DeleteIcon />}
-                          onClick={() => removeArrayItem('education', index)}
-                          color="error"
-                          size="small"
-                        >
-                          Remove
-                        </Button>
-                      </Box>
-                    ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={() => addArrayItem('education')}
-                      variant="outlined"
-                      size="small"
-                    >
-                      Add Education
-                    </Button>
-                  </AccordionDetails>
-                </Accordion>
-
-                {/* Skills */}
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle1">Skills</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <TextField
-                      fullWidth
-                      label="Skills (comma-separated)"
-                      value={resumeData.skills.join(', ')}
-                      onChange={(e) => handleInputChange('skills', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
-                      margin="normal"
-                      size="small"
-                      helperText="Enter skills separated by commas"
-                    />
-                  </AccordionDetails>
-                </Accordion>
-
-                {/* Projects */}
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle1">Projects</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    {resumeData.projects.map((project, index) => (
-                      <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              label="Project Name"
-                              value={project.name || ''}
-                              onChange={(e) => handleArrayChange('projects', index, { ...project, name: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={12}>
-                            <TextField
-                              fullWidth
-                              label="Description"
-                              multiline
-                              rows={2}
-                              value={project.description || ''}
-                              onChange={(e) => handleArrayChange('projects', index, { ...project, description: e.target.value })}
-                              margin="normal"
-                              size="small"
-                            />
-                          </Grid>
-                        </Grid>
-                        <Button
-                          startIcon={<DeleteIcon />}
-                          onClick={() => removeArrayItem('projects', index)}
-                          color="error"
-                          size="small"
-                        >
-                          Remove
-                        </Button>
-                      </Box>
-                    ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={() => addArrayItem('projects')}
-                      variant="outlined"
-                      size="small"
-                    >
-                      Add Project
-                    </Button>
-                  </AccordionDetails>
-                </Accordion>
-              </Box>
-            ) : (
-              <Box ref={previewRef}>
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                  {resumeData.name || 'Your Name'}
-                </Typography>
-                
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  {[resumeData.email, resumeData.phone, resumeData.location, resumeData.linkedin]
-                    .filter(Boolean)
-                    .join(' | ')}
-                </Box>
-
-                {resumeData.summary && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>SUMMARY</Typography>
-                    <Typography variant="body1">{resumeData.summary}</Typography>
-                  </Box>
-                )}
-
-                {resumeData.experience.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>EXPERIENCE</Typography>
-                    {resumeData.experience.map((exp, index) => (
-                      <Box key={index} sx={{ mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {exp.title} - {exp.company}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {exp.dates}
-                        </Typography>
-                        <Typography variant="body1">{exp.description}</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-
-                {resumeData.education.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>EDUCATION</Typography>
-                    {resumeData.education.map((edu, index) => (
-                      <Box key={index} sx={{ mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {edu.degree} - {edu.school}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {edu.dates}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-
-                {resumeData.skills.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>SKILLS</Typography>
-                    <Typography variant="body1">{resumeData.skills.join(', ')}</Typography>
-                  </Box>
-                )}
-
-                {resumeData.projects.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>PROJECTS</Typography>
-                    {resumeData.projects.map((project, index) => (
-                      <Box key={index} sx={{ mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {project.name}
-                        </Typography>
-                        <Typography variant="body1">{project.description}</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* Feedback Panel */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, mb: 3, height: '80vh', overflow: 'auto' }}>
-            <Typography variant="h6" gutterBottom>
-              Real-Time Feedback
-            </Typography>
-
-            {/* ATS Score */}
-            <Card sx={{ mb: 3, backgroundColor: 'background.default' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  {getFeedbackIcon(feedback.atsScore)}
-                  <Typography variant="h6" sx={{ ml: 1 }}>
-                    ATS Compatibility Score
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h4" color={`${getFeedbackColor(feedback.atsScore)}.main`}>
-                    {feedback.atsScore}%
-                  </Typography>
-                  <Chip 
-                    label={feedback.atsScore >= 80 ? 'Excellent' : feedback.atsScore >= 60 ? 'Good' : 'Needs Improvement'}
-                    color={getFeedbackColor(feedback.atsScore)}
-                    sx={{ ml: 2 }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-
-            {/* Suggestions */}
-            {feedback.suggestions.length > 0 && (
-              <Card sx={{ mb: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Improvement Suggestions
-                  </Typography>
-                  {feedback.suggestions.map((suggestion, index) => (
-                    <Box key={index} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start' }}>
-                      <InfoIcon sx={{ mr: 1, mt: 0.5, color: 'info.main' }} />
-                      <Typography variant="body2">{suggestion}</Typography>
-                    </Box>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Template Selection */}
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Template & Actions
-                </Typography>
-                
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Template</InputLabel>
-                  <Select
-                    value={selectedTemplate}
-                    onChange={(e) => setSelectedTemplate(e.target.value)}
-                    label="Template"
-                    size="small"
-                  >
-                    {templates.map((template) => (
-                      <MenuItem key={template.id} value={template.id}>
-                        {template.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<SaveIcon />}
-                    onClick={() => setSaveDialogOpen(true)}
-                    disabled={loading}
-                    size="small"
-                  >
-                    Save Version
-                  </Button>
-                  
-                  <Button
-                    variant="outlined"
-                    startIcon={<DownloadIcon />}
-                    onClick={handleGeneratePDF}
-                    disabled={loading}
-                    size="small"
-                  >
-                    Generate PDF
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-
-            {/* Saved Versions */}
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Saved Versions
-                </Typography>
-                
-                {versions.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    No saved versions yet
-                  </Typography>
-                ) : (
-                  <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
-                    {versions.map((version) => (
-                      <Box key={version.id} sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                          {version.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {version.job_title} • {new Date(version.created_at).toLocaleDateString()}
-                        </Typography>
-                        <Box sx={{ mt: 1 }}>
-                          <IconButton
-                            onClick={() => loadVersion(version.id)}
-                            size="small"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            onClick={() => deleteVersion(version.id)}
-                            size="small"
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Save Dialog */}
-      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-        <DialogTitle>Save Resume Version</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Version Name"
-            value={versionName}
-            onChange={(e) => setVersionName(e.target.value)}
-            margin="normal"
-            placeholder="e.g., Software Engineer 2024"
+        {/* Floating Actions */}
+        <FloatButton.Group
+          trigger="hover"
+          type="primary"
+          style={{ right: 24 }}
+          icon={<EditOutlined />}
+        >
+          <FloatButton 
+            icon={<EyeOutlined />} 
+            tooltip="Toggle Preview" 
+            onClick={() => setPreviewMode(!previewMode)} 
           />
-          <TextField
-            fullWidth
-            label="Job Title"
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            margin="normal"
-            placeholder="e.g., Software Engineer"
+          <FloatButton 
+            icon={<SaveOutlined />} 
+            tooltip="Save Version" 
+            onClick={() => setSaveModalVisible(true)} 
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveVersion} variant="contained" disabled={loading}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Alert */}
-      <Snackbar
-        open={alert.open}
-        autoHideDuration={6000}
-        onClose={() => setAlert({ ...alert, open: false })}
-      >
-        <Alert severity={alert.severity} onClose={() => setAlert({ ...alert, open: false })}>
-          {alert.message}
-        </Alert>
-      </Snackbar>
-
-      {/* Floating Action Button for Quick Actions */}
-      <Fab
-        color="primary"
-        aria-label="quick actions"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={() => setPreviewMode(!previewMode)}
-      >
-        <VisibilityIcon />
-      </Fab>
-    </Box>
+          <FloatButton 
+            icon={<DownloadOutlined />} 
+            tooltip="Export PDF" 
+            onClick={handleExport} 
+          />
+        </FloatButton.Group>
+      </motion.div>
+    </Content>
   );
 };
 

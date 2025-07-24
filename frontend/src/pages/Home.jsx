@@ -1,342 +1,473 @@
 import React from 'react';
 import { 
-  Box, 
+  Row, 
+  Col, 
   Typography, 
   Button, 
   Card, 
-  CardContent, 
-  Grid, 
-  Container,
-  Paper
-} from '@mui/material';
+  Space,
+  Divider,
+  Layout
+} from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Assessment, 
-  TrendingUp, 
-  School, 
-  WorkOutline,
-  Upload,
-  Analytics,
-  Lightbulb,
-  Book,
-  Build,
-  Download,
-  Edit
-} from '@mui/icons-material';
+  BarChartOutlined, 
+  RiseOutlined, 
+  BulbOutlined, 
+  BookOutlined,
+  BuildOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  UploadOutlined,
+  LineChartOutlined,
+  CheckCircleOutlined,
+  RocketOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
+
+const { Title, Paragraph, Text } = Typography;
+const { Content } = Layout;
 
 const Home = () => {
   const navigate = useNavigate();
 
   const features = [
     {
-      icon: <Assessment sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <BarChartOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: 'ATS Compatibility',
       description: 'Check your resume against Applicant Tracking Systems to ensure it gets past the initial screening.'
     },
     {
-      icon: <TrendingUp sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <RiseOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: 'Skill Gap Analysis',
       description: 'Identify missing skills for your target job role and understand what you need to learn.'
     },
     {
-      icon: <Lightbulb sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <BulbOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: 'Bullet Point Improvements',
       description: 'Get AI-powered suggestions to make your bullet points more impactful and ATS-friendly.'
     },
     {
-      icon: <School sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <BookOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: 'Learning Recommendations',
       description: 'Receive personalized project and course recommendations to fill your skill gaps.'
     },
     {
-      icon: <Build sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <BuildOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: 'Resume Builder',
       description: 'Create ATS-friendly resumes with professional templates and save multiple versions for different roles.'
     },
     {
-      icon: <Download sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <DownloadOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: '1-Click PDF Export',
       description: 'Generate professional PDF resumes instantly with our optimized templates for maximum ATS compatibility.'
     },
     {
-      icon: <Edit sx={{ fontSize: 40, color: 'primary.main' }} />,
+      icon: <EditOutlined style={{ fontSize: 40, color: '#1976d2' }} />,
       title: 'Real-Time Editor',
       description: 'WYSIWYG editor with instant feedback, live preview, and real-time ATS compatibility scoring as you type.'
     }
   ];
 
-  return (
-    <Box>
-      {/* Hero Section */}
-      <Paper 
-        elevation={0}
-        sx={{ 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          py: 8,
-          mb: 6,
-          borderRadius: 3
-        }}
-      >
-        <Container maxWidth="md">
-          <Box textAlign="center">
-            <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-              ResuScan
-            </Typography>
-            <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9 }}>
-              Resume Analyzer + ATS Matcher
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 4, fontSize: '1.1rem', opacity: 0.8 }}>
-              Upload your resume and instantly scan it for ATS compatibility, skill gaps, 
-              and get personalized improvement suggestions.
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<Upload />}
-              onClick={() => navigate('/analyze')}
-              sx={{ 
-                px: 4, 
-                py: 1.5, 
-                fontSize: '1.1rem',
-                backgroundColor: 'white',
-                color: 'primary.main',
-                '&:hover': {
-                  backgroundColor: 'grey.100'
-                }
-              }}
-            >
-              Start Analyzing
-            </Button>
-          </Box>
-        </Container>
-      </Paper>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        delayChildren: 0.3,
+        staggerChildren: 0.2
+      }
+    }
+  };
 
-      {/* Features Section */}
-      <Container maxWidth="lg">
-        <Typography variant="h4" component="h2" gutterBottom textAlign="center" sx={{ mb: 6 }}>
-          What ResuScan Does
-        </Typography>
-        
-        <Grid container spacing={4} sx={{ mb: 6 }}>
-          {features.map((feature, index) => (
-            <Grid item xs={12} md={6} lg={4} key={index}>
-              <Card elevation={2} sx={{ height: '100%', p: 2 }}>
-                <CardContent>
-                  <Box textAlign="center" sx={{ mb: 2 }}>
-                    {feature.icon}
-                  </Box>
-                  <Typography variant="h6" component="h3" gutterBottom textAlign="center">
-                    {feature.title}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" textAlign="center">
-                    {feature.description}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1
+    }
+  };
+
+  return (
+    <Content style={{ padding: '0', minHeight: '100vh' }}>
+      {/* Hero Section */}
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            padding: '80px 24px',
+            textAlign: 'center',
+            minHeight: '500px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div style={{ maxWidth: '800px' }}>
+            <motion.div variants={itemVariants}>
+              <Title level={1} style={{ color: 'white', fontWeight: 'bold', fontSize: '3.5rem', marginBottom: '16px' }}>
+                ResuScan
+              </Title>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <Title level={2} style={{ color: 'white', opacity: 0.9, fontWeight: 'normal', marginBottom: '24px' }}>
+                Resume Analyzer + ATS Matcher
+              </Title>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <Paragraph style={{ fontSize: '1.2rem', opacity: 0.8, marginBottom: '32px', color: 'white' }}>
+                Upload your resume and instantly scan it for ATS compatibility, skill gaps, 
+                and get personalized improvement suggestions.
+              </Paragraph>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<UploadOutlined />}
+                onClick={() => navigate('/analyze')}
+                style={{
+                  height: '48px',
+                  padding: '0 32px',
+                  fontSize: '1.1rem',
+                  backgroundColor: 'white',
+                  borderColor: 'white',
+                  color: '#1976d2',
+                  fontWeight: 'bold'
+                }}
+              >
+                Start Analyzing
+              </Button>
+            </motion.div>
+          </div>
+        </div>
+      </motion.div>
+
+      <div style={{ padding: '80px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Features Section */}
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={containerVariants}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <Title level={2} style={{ marginBottom: '16px' }}>
+              What ResuScan Does
+            </Title>
+          </div>
+          
+          <Row gutter={[32, 32]}>
+            {features.map((feature, index) => (
+              <Col xs={24} md={12} lg={8} key={index}>
+                <motion.div variants={itemVariants}>
+                  <Card
+                    hoverable
+                    style={{
+                      height: '100%',
+                      textAlign: 'center',
+                      padding: '24px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid #f0f0f0',
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'stretch',
+                      minHeight: 240
+                    }}
+                    bodyStyle={{
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      flex: 1,
+                      justifyContent: 'space-between',
+                      height: '100%'
+                    }}
+                  >
+                    <div style={{ marginBottom: '16px' }}>
+                      {feature.icon}
+                    </div>
+                    <Title level={4} style={{ marginBottom: '12px' }}>
+                      {feature.title}
+                    </Title>
+                    <Paragraph style={{ color: '#666', margin: 0, flex: 1 }}>
+                      {feature.description}
+                    </Paragraph>
+                  </Card>
+                </motion.div>
+              </Col>
+            ))}
+          </Row>
+        </motion.div>
+
+        <Divider style={{ margin: '80px 0' }} />
 
         {/* How It Works */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h4" component="h2" gutterBottom textAlign="center" sx={{ mb: 4 }}>
-            How It Works
-          </Typography>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={containerVariants}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <Title level={2}>How It Works</Title>
+          </div>
           
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Card elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-                <Upload sx={{ fontSize: 50, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  1. Upload Resume
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Upload your resume in PDF, DOCX, or other common formats
-                </Typography>
-              </Card>
-            </Grid>
+          <Row gutter={[32, 32]}>
+            <Col xs={24} md={8}>
+              <motion.div variants={itemVariants}>
+                <Card style={{ textAlign: 'center', padding: '32px 24px', borderRadius: '12px' }}>
+                  <UploadOutlined style={{ fontSize: 50, color: '#1976d2', marginBottom: '16px' }} />
+                  <Title level={4}>1. Upload Resume</Title>
+                  <Paragraph style={{ color: '#666' }}>
+                    Upload your resume in PDF, DOCX, or other common formats
+                  </Paragraph>
+                </Card>
+              </motion.div>
+            </Col>
             
-            <Grid item xs={12} md={4}>
-              <Card elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-                <Analytics sx={{ fontSize: 50, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  2. AI Analysis
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Our AI analyzes your resume for ATS compatibility and skill gaps
-                </Typography>
-              </Card>
-            </Grid>
+            <Col xs={24} md={8}>
+              <motion.div variants={itemVariants}>
+                <Card style={{ textAlign: 'center', padding: '32px 24px', borderRadius: '12px' }}>
+                  <LineChartOutlined style={{ fontSize: 50, color: '#1976d2', marginBottom: '16px' }} />
+                  <Title level={4}>2. AI Analysis</Title>
+                  <Paragraph style={{ color: '#666' }}>
+                    Our AI analyzes your resume for ATS compatibility and skill gaps
+                  </Paragraph>
+                </Card>
+              </motion.div>
+            </Col>
             
-            <Grid item xs={12} md={4}>
-              <Card elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-                <Book sx={{ fontSize: 50, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  3. Get Recommendations
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Receive personalized suggestions for improvements and learning
-                </Typography>
-              </Card>
-            </Grid>
-          </Grid>
-        </Box>
+            <Col xs={24} md={8}>
+              <motion.div variants={itemVariants}>
+                <Card style={{ textAlign: 'center', padding: '32px 24px', borderRadius: '12px' }}>
+                  <BookOutlined style={{ fontSize: 50, color: '#1976d2', marginBottom: '16px' }} />
+                  <Title level={4}>3. Get Recommendations</Title>
+                  <Paragraph style={{ color: '#666' }}>
+                    Receive personalized suggestions for improvements and learning
+                  </Paragraph>
+                </Card>
+              </motion.div>
+            </Col>
+          </Row>
+        </motion.div>
+
+        <Divider style={{ margin: '80px 0' }} />
 
         {/* Resume Builder Section */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h4" component="h2" gutterBottom textAlign="center" sx={{ mb: 4 }}>
-            Build Professional Resumes
-          </Typography>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={containerVariants}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <Title level={2}>Build Professional Resumes</Title>
+          </div>
           
-          <Card elevation={3} sx={{ p: 4, background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
-            <Grid container spacing={4} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Create ATS-Friendly Resumes
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 3 }}>
-                  Build professional resumes with our optimized templates designed to pass through Applicant Tracking Systems. 
-                  Save multiple versions for different job roles and export to PDF with one click.
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<Build />}
-                    onClick={() => navigate('/builder')}
-                    sx={{ px: 3, py: 1.5 }}
-                  >
-                    Start Building
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    startIcon={<Assessment />}
-                    onClick={() => navigate('/analyze')}
-                    sx={{ px: 3, py: 1.5 }}
-                  >
-                    Analyze Existing
-                  </Button>
-                </Box>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Card sx={{ p: 2, backgroundColor: 'white' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      ✓ Professional Templates
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Choose from multiple ATS-optimized templates
-                    </Typography>
-                  </Card>
-                  <Card sx={{ p: 2, backgroundColor: 'white' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      ✓ Resume Versioning
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Save different versions for different job roles
-                    </Typography>
-                  </Card>
-                  <Card sx={{ p: 2, backgroundColor: 'white' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      ✓ 1-Click PDF Export
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Generate professional PDFs instantly
-                    </Typography>
-                  </Card>
-                </Box>
-              </Grid>
-            </Grid>
+          <Card
+            style={{
+              background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+              borderRadius: '16px',
+              padding: '40px 32px',
+              border: 'none'
+            }}
+          >
+            <Row gutter={[32, 32]} align="middle">
+              <Col xs={24} md={12}>
+                <motion.div variants={itemVariants}>
+                  <Title level={3} style={{ fontWeight: 'bold', marginBottom: '16px' }}>
+                    Create ATS-Friendly Resumes
+                  </Title>
+                  <Paragraph style={{ fontSize: '1.1rem', marginBottom: '24px' }}>
+                    Build professional resumes with our optimized templates designed to pass through Applicant Tracking Systems. 
+                    Save multiple versions for different job roles and export to PDF with one click.
+                  </Paragraph>
+                  <Space size="middle" wrap>
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<BuildOutlined />}
+                      onClick={() => navigate('/builder')}
+                      style={{ height: '44px', padding: '0 24px' }}
+                    >
+                      Start Building
+                    </Button>
+                    <Button
+                      size="large"
+                      icon={<BarChartOutlined />}
+                      onClick={() => navigate('/analyze')}
+                      style={{ height: '44px', padding: '0 24px' }}
+                    >
+                      Analyze Existing
+                    </Button>
+                  </Space>
+                </motion.div>
+              </Col>
+              <Col xs={24} md={12}>
+                <motion.div variants={itemVariants}>
+                  <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Card style={{ backgroundColor: 'white', borderRadius: '8px' }}>
+                      <Space>
+                        <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                        <div>
+                          <Text strong>Professional Templates</Text>
+                          <br />
+                          <Text type="secondary">Choose from multiple ATS-optimized templates</Text>
+                        </div>
+                      </Space>
+                    </Card>
+                    <Card style={{ backgroundColor: 'white', borderRadius: '8px' }}>
+                      <Space>
+                        <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                        <div>
+                          <Text strong>Resume Versioning</Text>
+                          <br />
+                          <Text type="secondary">Save different versions for different job roles</Text>
+                        </div>
+                      </Space>
+                    </Card>
+                    <Card style={{ backgroundColor: 'white', borderRadius: '8px' }}>
+                      <Space>
+                        <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                        <div>
+                          <Text strong>1-Click PDF Export</Text>
+                          <br />
+                          <Text type="secondary">Generate professional PDFs instantly</Text>
+                        </div>
+                      </Space>
+                    </Card>
+                  </Space>
+                </motion.div>
+              </Col>
+            </Row>
           </Card>
-        </Box>
+        </motion.div>
+
+        <Divider style={{ margin: '80px 0' }} />
 
         {/* Real-Time Editor Section */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h4" component="h2" gutterBottom textAlign="center" sx={{ mb: 4 }}>
-            Real-Time Resume Editor
-          </Typography>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={containerVariants}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <Title level={2}>Real-Time Resume Editor</Title>
+          </div>
           
-          <Card elevation={3} sx={{ p: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-            <Grid container spacing={4} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  WYSIWYG Editor with Instant Feedback
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-                  Edit your resume in real-time with live preview and instant ATS compatibility scoring. 
-                  Get immediate feedback as you type and see your changes reflected instantly.
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Card
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '16px',
+              padding: '40px 32px',
+              border: 'none',
+              color: 'white'
+            }}
+          >
+            <Row gutter={[32, 32]} align="middle">
+              <Col xs={24} md={12}>
+                <motion.div variants={itemVariants}>
+                  <Title level={3} style={{ fontWeight: 'bold', marginBottom: '16px', color: 'white' }}>
+                    WYSIWYG Editor with Instant Feedback
+                  </Title>
+                  <Paragraph style={{ fontSize: '1.1rem', marginBottom: '24px', color: 'white', opacity: 0.9 }}>
+                    Edit your resume in real-time with live preview and instant ATS compatibility scoring. 
+                    Get immediate feedback as you type and see your changes reflected instantly.
+                  </Paragraph>
                   <Button
-                    variant="contained"
+                    type="primary"
                     size="large"
-                    startIcon={<Edit />}
+                    icon={<EditOutlined />}
                     onClick={() => navigate('/editor')}
-                    sx={{ 
-                      px: 3, 
-                      py: 1.5,
+                    style={{
+                      height: '44px',
+                      padding: '0 24px',
                       backgroundColor: 'white',
-                      color: 'primary.main',
-                      '&:hover': {
-                        backgroundColor: 'grey.100'
-                      }
+                      borderColor: 'white',
+                      color: '#1976d2'
                     }}
                   >
                     Start Editing
                   </Button>
-                </Box>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Card sx={{ p: 2, backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      ⚡ Live Preview
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      See your resume as it will appear to employers
-                    </Typography>
-                  </Card>
-                  <Card sx={{ p: 2, backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      📊 Real-Time Scoring
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Get instant ATS compatibility feedback
-                    </Typography>
-                  </Card>
-                  <Card sx={{ p: 2, backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      💡 Smart Suggestions
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Receive improvement tips as you edit
-                    </Typography>
-                  </Card>
-                </Box>
-              </Grid>
-            </Grid>
+                </motion.div>
+              </Col>
+              <Col xs={24} md={12}>
+                <motion.div variants={itemVariants}>
+                  <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Card style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', backdropFilter: 'blur(10px)' }}>
+                      <Space>
+                        <RocketOutlined style={{ color: 'white' }} />
+                        <div>
+                          <Text strong style={{ color: 'white' }}>Live Preview</Text>
+                          <br />
+                          <Text style={{ color: 'white', opacity: 0.8 }}>See your resume as it will appear to employers</Text>
+                        </div>
+                      </Space>
+                    </Card>
+                    <Card style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', backdropFilter: 'blur(10px)' }}>
+                      <Space>
+                        <BarChartOutlined style={{ color: 'white' }} />
+                        <div>
+                          <Text strong style={{ color: 'white' }}>Real-Time Scoring</Text>
+                          <br />
+                          <Text style={{ color: 'white', opacity: 0.8 }}>Get instant ATS compatibility feedback</Text>
+                        </div>
+                      </Space>
+                    </Card>
+                    <Card style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', backdropFilter: 'blur(10px)' }}>
+                      <Space>
+                        <BulbOutlined style={{ color: 'white' }} />
+                        <div>
+                          <Text strong style={{ color: 'white' }}>Smart Suggestions</Text>
+                          <br />
+                          <Text style={{ color: 'white', opacity: 0.8 }}>Receive improvement tips as you edit</Text>
+                        </div>
+                      </Space>
+                    </Card>
+                  </Space>
+                </motion.div>
+              </Col>
+            </Row>
           </Card>
-        </Box>
+        </motion.div>
 
         {/* CTA Section */}
-        <Box textAlign="center" sx={{ mb: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Ready to optimize your resume?
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<WorkOutline />}
-            onClick={() => navigate('/analyze')}
-            sx={{ px: 4, py: 1.5, fontSize: '1.1rem' }}
-          >
-            Analyze Your Resume Now
-          </Button>
-        </Box>
-      </Container>
-    </Box>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={containerVariants}
+          style={{ textAlign: 'center', marginTop: '80px' }}
+        >
+          <motion.div variants={itemVariants}>
+            <Title level={3} style={{ marginBottom: '24px' }}>
+              Ready to optimize your resume?
+            </Title>
+            <Button
+              type="primary"
+              size="large"
+              icon={<BarChartOutlined />}
+              onClick={() => navigate('/analyze')}
+              style={{
+                height: '48px',
+                padding: '0 32px',
+                fontSize: '1.1rem',
+                fontWeight: 'bold'
+              }}
+            >
+              Analyze Your Resume Now
+            </Button>
+          </motion.div>
+        </motion.div>
+      </div>
+    </Content>
   );
 };
 

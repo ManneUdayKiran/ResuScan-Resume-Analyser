@@ -1,55 +1,61 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { Container, Box } from '@mui/material';
-import Header from './components/Header';
-import Home from './pages/Home';
-import ResumeAnalyzer from './pages/ResumeAnalyzer';
-import ResumeBuilder from './pages/ResumeBuilder';
-import RealTimeEditor from './pages/RealTimeEditor';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ConfigProvider } from "antd";
+import { motion } from "framer-motion";
+import Header from "./components/Header";
+import Home from "./pages/Home";
+import ResumeAnalyzer from "./pages/ResumeAnalyzer";
+import ResumeBuilder from "./pages/ResumeBuilder";
+import RealTimeEditor from "./pages/RealTimeEditor";
 
-import './App.css';
+import "./App.css";
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
+const theme = {
+  token: {
+    colorPrimary: "#1976d2",
+    colorSuccess: "#52c41a",
+    colorWarning: "#faad14",
+    colorError: "#ff4d4f",
+    colorInfo: "#1890ff",
+    borderRadius: 8,
+    wireframe: false,
+  },
+  components: {
+    Layout: {
+      bodyBg: "#f5f5f5",
+      headerBg: "#1976d2",
     },
-    secondary: {
-      main: '#dc004e',
+    Button: {
+      borderRadius: 6,
     },
-    background: {
-      default: '#f5f5f5',
+    Card: {
+      borderRadius: 12,
     },
   },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 600,
-    },
-  },
-});
+};
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ConfigProvider theme={theme}>
       <Router>
-        <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+        <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5" }}>
           <Header />
-          <Container maxWidth="lg" sx={{ py: 4 }}>
+          <motion.div
+            style={{ paddingTop: "64px" }} // Account for fixed header
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/analyze" element={<ResumeAnalyzer />} />
               <Route path="/builder" element={<ResumeBuilder />} />
               <Route path="/editor" element={<RealTimeEditor />} />
-
             </Routes>
-          </Container>
-        </Box>
+          </motion.div>
+        </div>
       </Router>
-    </ThemeProvider>
+    </ConfigProvider>
   );
 }
 

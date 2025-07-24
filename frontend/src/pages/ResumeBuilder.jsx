@@ -1,48 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Paper,
+  Row,
+  Col,
   Typography,
-  TextField,
-  Button,
-  Grid,
   Card,
-  CardContent,
-  CardActions,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
+  Input,
+  Button,
+  Form,
+  Space,
   Divider,
-  Alert,
-  Snackbar,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Fab
-} from '@mui/material';
+  Select,
+  Modal,
+  List,
+  Tag,
+  message,
+  Layout,
+  FloatButton
+} from 'antd';
 import {
-  Add as AddIcon,
-  Save as SaveIcon,
-  Download as DownloadIcon,
-  Delete as DeleteIcon,
-  ExpandMore as ExpandMoreIcon,
-  Edit as EditIcon,
-  ContentCopy as CopyIcon
-} from '@mui/icons-material';
+  PlusOutlined,
+  SaveOutlined,
+  DownloadOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  CopyOutlined,
+  BuildOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import { resumeBuilderService } from '../services/resumeBuilderService';
 
+const { Title, Paragraph, Text } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+const { Content } = Layout;
+
 const ResumeBuilder = () => {
+  const [form] = Form.useForm();
   const [resumeData, setResumeData] = useState({
     name: '',
     email: '',
@@ -59,10 +52,9 @@ const ResumeBuilder = () => {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('professional');
   const [versions, setVersions] = useState([]);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [versionName, setVersionName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -73,7 +65,7 @@ const ResumeBuilder = () => {
   const loadTemplates = async () => {
     try {
       const response = await resumeBuilderService.getTemplates();
-      setTemplates(response.templates);
+      setTemplates(response.templates || []);
     } catch (error) {
       console.error('Error loading templates:', error);
     }
@@ -82,7 +74,7 @@ const ResumeBuilder = () => {
   const loadVersions = async () => {
     try {
       const response = await resumeBuilderService.getVersions();
-      setVersions(response.versions);
+      setVersions(response.versions || []);
     } catch (error) {
       console.error('Error loading versions:', error);
     }
@@ -95,590 +87,502 @@ const ResumeBuilder = () => {
     }));
   };
 
-  const handleArrayChange = (field, index, value) => {
+  const addExperience = () => {
     setResumeData(prev => ({
       ...prev,
-      [field]: prev[field].map((item, i) => i === index ? value : item)
+      experience: [...prev.experience, {
+        title: '',
+        company: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        current: false,
+        description: ''
+      }]
     }));
   };
 
-  const addArrayItem = (field) => {
+  const updateExperience = (index, field, value) => {
     setResumeData(prev => ({
       ...prev,
-      [field]: [...prev[field], {}]
+      experience: prev.experience.map((exp, i) => 
+        i === index ? { ...exp, [field]: value } : exp
+      )
     }));
   };
 
-  const removeArrayItem = (field, index) => {
+  const removeExperience = (index) => {
     setResumeData(prev => ({
       ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
+      experience: prev.experience.filter((_, i) => i !== index)
     }));
   };
 
-  const handleSaveVersion = async () => {
-    if (!versionName.trim() || !jobTitle.trim()) {
-      setAlert({
-        open: true,
-        message: 'Please provide both version name and job title',
-        severity: 'error'
-      });
+  const addEducation = () => {
+    setResumeData(prev => ({
+      ...prev,
+      education: [...prev.education, {
+        degree: '',
+        school: '',
+        location: '',
+        graduationDate: '',
+        gpa: ''
+      }]
+    }));
+  };
+
+  const updateEducation = (index, field, value) => {
+    setResumeData(prev => ({
+      ...prev,
+      education: prev.education.map((edu, i) => 
+        i === index ? { ...edu, [field]: value } : edu
+      )
+    }));
+  };
+
+  const removeEducation = (index) => {
+    setResumeData(prev => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addSkill = (skill) => {
+    if (skill && !resumeData.skills.includes(skill)) {
+      setResumeData(prev => ({
+        ...prev,
+        skills: [...prev.skills, skill]
+      }));
+    }
+  };
+
+  const removeSkill = (skillToRemove) => {
+    setResumeData(prev => ({
+      ...prev,
+      skills: prev.skills.filter(skill => skill !== skillToRemove)
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!versionName || !jobTitle) {
+      message.error('Please provide version name and job title');
       return;
     }
 
     setLoading(true);
     try {
-      await resumeBuilderService.saveVersion(resumeData, versionName, jobTitle);
-      setAlert({
-        open: true,
-        message: 'Resume version saved successfully!',
-        severity: 'success'
+      await resumeBuilderService.saveVersion({
+        ...resumeData,
+        versionName,
+        jobTitle,
+        template: selectedTemplate
       });
-      setSaveDialogOpen(false);
+      message.success('Resume version saved successfully!');
+      setSaveModalVisible(false);
       setVersionName('');
       setJobTitle('');
       loadVersions();
     } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error saving resume version',
-        severity: 'error'
-      });
+      message.error('Error saving resume version');
+      console.error('Save error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGeneratePDF = async () => {
+  const handleExport = async () => {
     setLoading(true);
     try {
-      const response = await resumeBuilderService.generatePDF(resumeData, selectedTemplate);
-      const blob = new Blob([response], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `resume_${new Date().toISOString().slice(0, 10)}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      
-      setAlert({
-        open: true,
-        message: 'PDF generated and downloaded successfully!',
-        severity: 'success'
-      });
+      await resumeBuilderService.exportToPDF(resumeData, selectedTemplate);
+      message.success('PDF exported successfully!');
     } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error generating PDF',
-        severity: 'error'
-      });
+      message.error('Error exporting PDF');
+      console.error('Export error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveAndGeneratePDF = async () => {
-    if (!versionName.trim() || !jobTitle.trim()) {
-      setAlert({
-        open: true,
-        message: 'Please provide both version name and job title',
-        severity: 'error'
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await resumeBuilderService.saveAndGeneratePDF(
-        resumeData, versionName, jobTitle, selectedTemplate
-      );
-      const blob = new Blob([response], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${versionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      
-      setAlert({
-        open: true,
-        message: 'Resume saved and PDF generated successfully!',
-        severity: 'success'
-      });
-      setSaveDialogOpen(false);
-      setVersionName('');
-      setJobTitle('');
-      loadVersions();
-    } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error saving and generating PDF',
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        delayChildren: 0.1,
+        staggerChildren: 0.1
+      }
     }
   };
 
-  const loadVersion = async (versionId) => {
-    try {
-      const response = await resumeBuilderService.getVersion(versionId);
-      setResumeData(response.version.resume_data);
-      setJobTitle(response.version.job_title);
-      setAlert({
-        open: true,
-        message: 'Resume version loaded successfully!',
-        severity: 'success'
-      });
-    } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error loading resume version',
-        severity: 'error'
-      });
-    }
-  };
-
-  const deleteVersion = async (versionId) => {
-    try {
-      await resumeBuilderService.deleteVersion(versionId);
-      setAlert({
-        open: true,
-        message: 'Resume version deleted successfully!',
-        severity: 'success'
-      });
-      loadVersions();
-    } catch (error) {
-      setAlert({
-        open: true,
-        message: 'Error deleting resume version',
-        severity: 'error'
-      });
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1
     }
   };
 
   return (
-    <Box sx={{ py: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Resume Builder
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {/* Resume Form */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Resume Information
-            </Typography>
-            
-            {/* Basic Information */}
-            <Accordion defaultExpanded>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Basic Information</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Full Name"
-                      value={resumeData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      margin="normal"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      value={resumeData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      margin="normal"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone"
-                      value={resumeData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      margin="normal"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Location"
-                      value={resumeData.location}
-                      onChange={(e) => handleInputChange('location', e.target.value)}
-                      margin="normal"
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="LinkedIn URL"
-                      value={resumeData.linkedin}
-                      onChange={(e) => handleInputChange('linkedin', e.target.value)}
-                      margin="normal"
-                    />
-                  </Grid>
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Summary */}
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Professional Summary</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <TextField
-                  fullWidth
-                  label="Summary"
-                  multiline
-                  rows={4}
-                  value={resumeData.summary}
-                  onChange={(e) => handleInputChange('summary', e.target.value)}
-                  margin="normal"
-                />
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Experience */}
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Work Experience</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {resumeData.experience.map((exp, index) => (
-                  <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Job Title"
-                          value={exp.title || ''}
-                          onChange={(e) => handleArrayChange('experience', index, { ...exp, title: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Company"
-                          value={exp.company || ''}
-                          onChange={(e) => handleArrayChange('experience', index, { ...exp, company: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Dates"
-                          value={exp.dates || ''}
-                          onChange={(e) => handleArrayChange('experience', index, { ...exp, dates: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          fullWidth
-                          label="Description"
-                          multiline
-                          rows={3}
-                          value={exp.description || ''}
-                          onChange={(e) => handleArrayChange('experience', index, { ...exp, description: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Button
-                      startIcon={<DeleteIcon />}
-                      onClick={() => removeArrayItem('experience', index)}
-                      color="error"
-                      size="small"
-                    >
-                      Remove
-                    </Button>
-                  </Box>
-                ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => addArrayItem('experience')}
-                  variant="outlined"
-                >
-                  Add Experience
-                </Button>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Education */}
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Education</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {resumeData.education.map((edu, index) => (
-                  <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Degree"
-                          value={edu.degree || ''}
-                          onChange={(e) => handleArrayChange('education', index, { ...edu, degree: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="School"
-                          value={edu.school || ''}
-                          onChange={(e) => handleArrayChange('education', index, { ...edu, school: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          fullWidth
-                          label="Dates"
-                          value={edu.dates || ''}
-                          onChange={(e) => handleArrayChange('education', index, { ...edu, dates: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Button
-                      startIcon={<DeleteIcon />}
-                      onClick={() => removeArrayItem('education', index)}
-                      color="error"
-                      size="small"
-                    >
-                      Remove
-                    </Button>
-                  </Box>
-                ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => addArrayItem('education')}
-                  variant="outlined"
-                >
-                  Add Education
-                </Button>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Skills */}
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Skills</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <TextField
-                  fullWidth
-                  label="Skills (comma-separated)"
-                  value={resumeData.skills.join(', ')}
-                  onChange={(e) => handleInputChange('skills', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
-                  margin="normal"
-                  helperText="Enter skills separated by commas"
-                />
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Projects */}
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Projects</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {resumeData.projects.map((project, index) => (
-                  <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Project Name"
-                          value={project.name || ''}
-                          onChange={(e) => handleArrayChange('projects', index, { ...project, name: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          fullWidth
-                          label="Description"
-                          multiline
-                          rows={2}
-                          value={project.description || ''}
-                          onChange={(e) => handleArrayChange('projects', index, { ...project, description: e.target.value })}
-                          margin="normal"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Button
-                      startIcon={<DeleteIcon />}
-                      onClick={() => removeArrayItem('projects', index)}
-                      color="error"
-                      size="small"
-                    >
-                      Remove
-                    </Button>
-                  </Box>
-                ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => addArrayItem('projects')}
-                  variant="outlined"
-                >
-                  Add Project
-                </Button>
-              </AccordionDetails>
-            </Accordion>
-          </Paper>
-        </Grid>
-
-        {/* Template Selection and Actions */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Template & Actions
-            </Typography>
-            
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Template</InputLabel>
-              <Select
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value)}
-                label="Template"
-              >
-                {templates.map((template) => (
-                  <MenuItem key={template.id} value={template.id}>
-                    {template.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={() => setSaveDialogOpen(true)}
-                disabled={loading}
-                fullWidth
-              >
-                Save Version
-              </Button>
-              
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleGeneratePDF}
-                disabled={loading}
-                fullWidth
-              >
-                Generate PDF
-              </Button>
-              
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<DownloadIcon />}
-                onClick={handleSaveAndGeneratePDF}
-                disabled={loading}
-                fullWidth
-              >
-                Save & Generate PDF
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* Saved Versions */}
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Saved Versions
-            </Typography>
-            
-            {versions.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                No saved versions yet
-              </Typography>
-            ) : (
-              <List>
-                {versions.map((version) => (
-                  <React.Fragment key={version.id}>
-                    <ListItem>
-                      <ListItemText
-                        primary={version.name}
-                        secondary={`${version.job_title} • ${new Date(version.created_at).toLocaleDateString()}`}
-                      />
-                      <ListItemSecondaryAction>
-                        <IconButton
-                          onClick={() => loadVersion(version.id)}
-                          size="small"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => deleteVersion(version.id)}
-                          size="small"
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                    <Divider />
-                  </React.Fragment>
-                ))}
-              </List>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Save Dialog */}
-      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-        <DialogTitle>Save Resume Version</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Version Name"
-            value={versionName}
-            onChange={(e) => setVersionName(e.target.value)}
-            margin="normal"
-            placeholder="e.g., Software Engineer 2024"
-          />
-          <TextField
-            fullWidth
-            label="Job Title"
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            margin="normal"
-            placeholder="e.g., Software Engineer"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveVersion} variant="contained" disabled={loading}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Alert */}
-      <Snackbar
-        open={alert.open}
-        autoHideDuration={6000}
-        onClose={() => setAlert({ ...alert, open: false })}
+    <Content style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
       >
-        <Alert severity={alert.severity} onClose={() => setAlert({ ...alert, open: false })}>
-          {alert.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <Title level={2}>Resume Builder</Title>
+          <Paragraph style={{ fontSize: '1.1rem', color: '#666' }}>
+            Create professional, ATS-friendly resumes with our easy-to-use builder
+          </Paragraph>
+        </div>
+
+        <Row gutter={[24, 24]}>
+          {/* Form Section */}
+          <Col xs={24} lg={14}>
+            <motion.div variants={itemVariants}>
+              <Card title="Personal Information" style={{ marginBottom: 24 }}>
+                <Form layout="vertical">
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Full Name">
+                        <Input
+                          value={resumeData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          placeholder="Enter your full name"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Email">
+                        <Input
+                          type="email"
+                          value={resumeData.email}
+                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          placeholder="your.email@example.com"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Phone">
+                        <Input
+                          value={resumeData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          placeholder="+1 (555) 123-4567"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Location">
+                        <Input
+                          value={resumeData.location}
+                          onChange={(e) => handleInputChange('location', e.target.value)}
+                          placeholder="City, State"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item label="LinkedIn">
+                        <Input
+                          value={resumeData.linkedin}
+                          onChange={(e) => handleInputChange('linkedin', e.target.value)}
+                          placeholder="https://linkedin.com/in/yourprofile"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item label="Professional Summary">
+                        <TextArea
+                          rows={4}
+                          value={resumeData.summary}
+                          onChange={(e) => handleInputChange('summary', e.target.value)}
+                          placeholder="Write a brief summary of your professional background..."
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Form>
+              </Card>
+            </motion.div>
+
+            {/* Experience Section */}
+            <motion.div variants={itemVariants}>
+              <Card 
+                title="Work Experience" 
+                extra={
+                  <Button type="primary" icon={<PlusOutlined />} onClick={addExperience}>
+                    Add Experience
+                  </Button>
+                }
+                style={{ marginBottom: 24 }}
+              >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  {resumeData.experience.map((exp, index) => (
+                    <Card 
+                      key={index} 
+                      size="small"
+                      extra={
+                        <Button 
+                          type="text" 
+                          danger 
+                          icon={<DeleteOutlined />} 
+                          onClick={() => removeExperience(index)}
+                        />
+                      }
+                    >
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                          <Input
+                            placeholder="Job Title"
+                            value={exp.title}
+                            onChange={(e) => updateExperience(index, 'title', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Input
+                            placeholder="Company"
+                            value={exp.company}
+                            onChange={(e) => updateExperience(index, 'company', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={24} md={8}>
+                          <Input
+                            placeholder="Location"
+                            value={exp.location}
+                            onChange={(e) => updateExperience(index, 'location', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={12} md={8}>
+                          <Input
+                            placeholder="Start Date"
+                            value={exp.startDate}
+                            onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={12} md={8}>
+                          <Input
+                            placeholder="End Date"
+                            value={exp.endDate}
+                            onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={24}>
+                          <TextArea
+                            rows={3}
+                            placeholder="Job description and achievements..."
+                            value={exp.description}
+                            onChange={(e) => updateExperience(index, 'description', e.target.value)}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
+                </Space>
+              </Card>
+            </motion.div>
+
+            {/* Education Section */}
+            <motion.div variants={itemVariants}>
+              <Card 
+                title="Education" 
+                extra={
+                  <Button type="primary" icon={<PlusOutlined />} onClick={addEducation}>
+                    Add Education
+                  </Button>
+                }
+                style={{ marginBottom: 24 }}
+              >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  {resumeData.education.map((edu, index) => (
+                    <Card 
+                      key={index} 
+                      size="small"
+                      extra={
+                        <Button 
+                          type="text" 
+                          danger 
+                          icon={<DeleteOutlined />} 
+                          onClick={() => removeEducation(index)}
+                        />
+                      }
+                    >
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                          <Input
+                            placeholder="Degree"
+                            value={edu.degree}
+                            onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Input
+                            placeholder="School/University"
+                            value={edu.school}
+                            onChange={(e) => updateEducation(index, 'school', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={24} md={8}>
+                          <Input
+                            placeholder="Location"
+                            value={edu.location}
+                            onChange={(e) => updateEducation(index, 'location', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={12} md={8}>
+                          <Input
+                            placeholder="Graduation Date"
+                            value={edu.graduationDate}
+                            onChange={(e) => updateEducation(index, 'graduationDate', e.target.value)}
+                          />
+                        </Col>
+                        <Col xs={12} md={8}>
+                          <Input
+                            placeholder="GPA (optional)"
+                            value={edu.gpa}
+                            onChange={(e) => updateEducation(index, 'gpa', e.target.value)}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
+                </Space>
+              </Card>
+            </motion.div>
+
+            {/* Skills Section */}
+            <motion.div variants={itemVariants}>
+              <Card title="Skills" style={{ marginBottom: 24 }}>
+                <Input.Search
+                  placeholder="Add a skill"
+                  enterButton={<PlusOutlined />}
+                  onSearch={addSkill}
+                  style={{ marginBottom: 16 }}
+                />
+                <Space wrap>
+                  {resumeData.skills.map((skill, index) => (
+                    <Tag
+                      key={index}
+                      closable
+                      onClose={() => removeSkill(skill)}
+                      color="blue"
+                    >
+                      {skill}
+                    </Tag>
+                  ))}
+                </Space>
+              </Card>
+            </motion.div>
+          </Col>
+
+          {/* Preview and Actions Section */}
+          <Col xs={24} lg={10}>
+            <motion.div variants={itemVariants}>
+              <Card title="Template & Actions" style={{ marginBottom: 24 }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <div>
+                    <Title level={5}>Template</Title>
+                    <Select
+                      value={selectedTemplate}
+                      onChange={setSelectedTemplate}
+                      style={{ width: '100%' }}
+                    >
+                      <Option value="professional">Professional</Option>
+                      <Option value="modern">Modern</Option>
+                      <Option value="creative">Creative</Option>
+                      <Option value="minimal">Minimal</Option>
+                    </Select>
+                  </div>
+
+                  <Divider />
+
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Button
+                      type="primary"
+                      icon={<SaveOutlined />}
+                      onClick={() => setSaveModalVisible(true)}
+                      block
+                      size="large"
+                    >
+                      Save Version
+                    </Button>
+                    <Button
+                      icon={<DownloadOutlined />}
+                      onClick={handleExport}
+                      loading={loading}
+                      block
+                      size="large"
+                    >
+                      Export PDF
+                    </Button>
+                  </Space>
+                </Space>
+              </Card>
+            </motion.div>
+
+            {/* Saved Versions */}
+            <motion.div variants={itemVariants}>
+              <Card title="Saved Versions" style={{ marginBottom: 24 }}>
+                <List
+                  dataSource={versions}
+                  renderItem={version => (
+                    <List.Item
+                      actions={[
+                        <Button type="text" icon={<EditOutlined />} />,
+                        <Button type="text" icon={<CopyOutlined />} />,
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                      ]}
+                    >
+                      <List.Item.Meta
+                        title={version.name}
+                        description={`${version.jobTitle} • ${version.updatedAt}`}
+                      />
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </motion.div>
+          </Col>
+        </Row>
+
+        {/* Save Modal */}
+        <Modal
+          title="Save Resume Version"
+          open={saveModalVisible}
+          onOk={handleSave}
+          onCancel={() => setSaveModalVisible(false)}
+          confirmLoading={loading}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <div>
+              <label>Version Name:</label>
+              <Input
+                value={versionName}
+                onChange={(e) => setVersionName(e.target.value)}
+                placeholder="e.g., Software Engineer v1"
+              />
+            </div>
+            <div>
+              <label>Target Job Title:</label>
+              <Input
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g., Senior Software Engineer"
+              />
+            </div>
+          </Space>
+        </Modal>
+
+        {/* Floating Action Button */}
+        <FloatButton.Group
+          trigger="hover"
+          type="primary"
+          style={{ right: 24 }}
+          icon={<BuildOutlined />}
+        >
+          <FloatButton icon={<SaveOutlined />} tooltip="Save Version" onClick={() => setSaveModalVisible(true)} />
+          <FloatButton icon={<DownloadOutlined />} tooltip="Export PDF" onClick={handleExport} />
+        </FloatButton.Group>
+      </motion.div>
+    </Content>
   );
 };
 
