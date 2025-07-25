@@ -10,7 +10,8 @@ export default defineConfig({
       'resuscan-resume-analyser-1.onrender.com',
       'https://resuscan-resume-analyser.onrender.com',
       'https://melodious-sundae-7cef94.netlify.app/analyze',
-      'frontend-two-pi-49.vercel.app'
+      'frontend-two-pi-49.vercel.app',
+      'https://frontend-two-pi-49.vercel.app/analyze'
     ]
   },
 })
