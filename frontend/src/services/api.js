@@ -1,7 +1,9 @@
 import axios from "axios";
 
-// Use localhost for development, production URL for deployed version
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// Use environment variable or default to deployed backend URL
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://resuscan-resume-analyser.onrender.com";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
