@@ -36,14 +36,28 @@ app = FastAPI(title="ResuScan API", description="Resume Analyzer + ATS Matcher")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://resuscan-resume-analyser-1.onrender.com","https://frontend-two-pi-49.vercel.app"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "https://resuscan-resume-analyser-1.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Initialize Groq client
-groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+groq_api_key = os.getenv("GROQ_API_KEY")
+groq_client = None
+if groq_api_key and groq_api_key != "your_groq_api_key_here":
+    groq_client = groq.Groq(api_key=groq_api_key)
+else:
+    print("WARNING: GROQ_API_KEY not set. AI-powered features will be disabled.")
+    print("Get your API key at https://console.groq.com/ and add it to .env file")
 
 # Download required NLTK data
 try:
@@ -137,6 +151,194 @@ async def upload_resume(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error parsing resume: {str(e)}")
 
+# ==================== INTERNAL HELPER FUNCTIONS ====================
+# These functions contain the core logic and are called by both API endpoints and internal functions
+
+def _analyze_ats_internal(resume_text: str, job_title: str) -> dict:
+    """Internal ATS analysis logic"""
+    # Get relevant keywords for the job title
+    job_keywords = ATS_KEYWORDS.get(job_title.lower().replace(" ", "_"), [])
+    
+    # Analyze resume text
+    resume_lower = resume_text.lower()
+    matched_keywords = [keyword for keyword in job_keywords if keyword.lower() in resume_lower]
+    
+    # Calculate keyword score (40% of total)
+    keyword_score = min(100, (len(matched_keywords) / len(job_keywords)) * 100) if job_keywords else 0
+    
+    # Analyze format and structure
+    format_score = analyze_resume_format(resume_text)
+    
+    # Analyze readability
+    readability_score = analyze_readability(resume_text)
+    
+    # Analyze content structure
+    structure_score = analyze_content_structure(resume_text)
+    
+    # Calculate overall ATS score (weighted average)
+    ats_score = (
+        keyword_score * 0.4 +      # 40% - Keywords
+        format_score * 0.3 +       # 30% - Format
+        readability_score * 0.2 +  # 20% - Readability
+        structure_score * 0.1      # 10% - Structure
+    )
+    
+    # Generate improvement suggestions
+    missing_keywords = [keyword for keyword in job_keywords if keyword.lower() not in resume_lower]
+    improvement_tips = generate_improvement_tips(resume_text, keyword_score, format_score, readability_score, structure_score)
+    
+    return {
+        "ats_score": round(ats_score, 2),
+        "keyword_score": round(keyword_score, 2),
+        "format_score": round(format_score, 2),
+        "readability_score": round(readability_score, 2),
+        "structure_score": round(structure_score, 2),
+        "matched_keywords": matched_keywords,
+        "missing_keywords": missing_keywords[:10],
+        "total_keywords_checked": len(job_keywords),
+        "keywords_matched": len(matched_keywords),
+        "improvement_tips": improvement_tips,
+        "score_breakdown": {
+            "keywords": f"{keyword_score:.1f}/100",
+            "format": f"{format_score:.1f}/100",
+            "readability": f"{readability_score:.1f}/100",
+            "structure": f"{structure_score:.1f}/100"
+        }
+    }
+
+def _skill_gap_internal(resume_text: str, target_job: str) -> dict:
+    """Internal skill gap analysis logic"""
+    doc = nlp(resume_text)
+    resume_skills = extract_skills_from_text(resume_text)
+    
+    # Get required skills for target job
+    required_skills = get_required_skills_for_job(target_job)
+    
+    # Find skill gaps
+    missing_skills = [skill for skill in required_skills if skill.lower() not in [s.lower() for s in resume_skills]]
+    existing_skills = [skill for skill in required_skills if skill.lower() in [s.lower() for s in resume_skills]]
+    
+    # Calculate skill match percentage
+    skill_match_percentage = (len(existing_skills) / len(required_skills)) * 100 if required_skills else 0
+    
+    return {
+        "resume_skills": resume_skills,
+        "required_skills": required_skills,
+        "missing_skills": missing_skills,
+        "existing_skills": existing_skills,
+        "skill_match_percentage": round(skill_match_percentage, 2),
+        "total_skills_required": len(required_skills),
+        "skills_you_have": len(existing_skills),
+        "skills_to_learn": len(missing_skills)
+    }
+
+def _improve_bullets_internal(bullet_points: List[str], job_title: str) -> dict:
+    """Internal bullet point improvement logic"""
+    if not groq_client:
+        return {"improved_bullet_points": bullet_points, "message": "AI service unavailable"}
+    
+    improved_points = []
+    for bullet in bullet_points:
+        prompt = f"""
+        Improve this bullet point for a {job_title} resume.
+        
+        Original: {bullet}
+        
+        Write ONLY the improved bullet point. Do not include:
+        - Any introduction or explanation
+        - Any numbering or bullet points
+        - Multiple bullet points
+        
+        The improved bullet point should:
+        - Start with a strong action verb
+        - Include quantifiable metrics if possible
+        - Show impact and results
+        - Use relevant keywords for {job_title}
+        - Be 1-2 sentences maximum
+        
+        Return only the single improved bullet point text.
+        """
+        
+        try:
+            response = groq_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="gemma2-9b-it",
+                temperature=0.7,
+                max_tokens=1024
+            )
+            
+            improved_bullet = response.choices[0].message.content.strip()
+            improved_bullet = improved_bullet.replace('**', '').replace('*', '')
+            improved_bullet = improved_bullet.replace('•', '').replace('-', '')
+            
+            if ':' in improved_bullet:
+                improved_bullet = improved_bullet.split(':')[-1].strip()
+            if improved_bullet.startswith('Improved'):
+                improved_bullet = improved_bullet.replace('Improved Version:', '').replace('Improved version:', '').strip()
+            
+            improved_points.append({
+                "original": bullet,
+                "improved": improved_bullet
+            })
+        except Exception as e:
+            improved_points.append({
+                "original": bullet,
+                "improved": bullet,
+                "error": str(e)
+            })
+    
+    return {"improved_bullet_points": improved_points}
+
+def _recommend_internal(missing_skills: List[str], job_title: str) -> dict:
+    """Internal recommendations logic"""
+    project_database = {
+        "python": [
+            {"name": "Build a REST API with FastAPI", "difficulty": "Intermediate", "skills": ["python", "fastapi", "sql"]},
+            {"name": "Data Analysis Dashboard", "difficulty": "Beginner", "skills": ["python", "pandas", "plotly"]},
+        ],
+        "javascript": [
+            {"name": "React Portfolio Website", "difficulty": "Beginner", "skills": ["javascript", "react", "css"]},
+            {"name": "Full-Stack E-commerce App", "difficulty": "Advanced", "skills": ["javascript", "node.js", "mongodb"]},
+        ],
+        "default": [
+            {"name": "Personal Portfolio Website", "difficulty": "Beginner", "skills": ["html", "css", "javascript"]},
+            {"name": "To-Do List Application", "difficulty": "Beginner", "skills": ["javascript", "html", "css"]},
+        ]
+    }
+    
+    course_database = {
+        "python": [
+            {"name": "Python for Everybody", "platform": "Coursera", "duration": "8 weeks"},
+            {"name": "Complete Python Developer", "platform": "Udemy", "duration": "22 hours"},
+        ],
+        "javascript": [
+            {"name": "The Complete JavaScript Course", "platform": "Udemy", "duration": "69 hours"},
+            {"name": "JavaScript Algorithms", "platform": "freeCodeCamp", "duration": "300 hours"},
+        ],
+        "default": [
+            {"name": "Web Development Bootcamp", "platform": "Udemy", "duration": "63 hours"},
+            {"name": "CS50", "platform": "edX", "duration": "12 weeks"},
+        ]
+    }
+    
+    recommendations = {"projects": [], "courses": []}
+    
+    for skill in missing_skills[:5]:
+        skill_lower = skill.lower()
+        if skill_lower in project_database:
+            recommendations["projects"].extend(project_database[skill_lower])
+        if skill_lower in course_database:
+            recommendations["courses"].extend(course_database[skill_lower])
+    
+    if not recommendations["projects"]:
+        recommendations["projects"] = project_database.get("default", [])
+    if not recommendations["courses"]:
+        recommendations["courses"] = course_database.get("default", [])
+    
+    return recommendations
+
+# ==================== API ENDPOINTS ====================
+
 @app.post("/analyze-ats")
 async def analyze_ats_compatibility(
     resume_text: str = Form(...),
@@ -146,55 +348,7 @@ async def analyze_ats_compatibility(
     Analyze ATS compatibility with comprehensive scoring
     """
     try:
-        # Get relevant keywords for the job title
-        job_keywords = ATS_KEYWORDS.get(job_title.lower().replace(" ", "_"), [])
-        
-        # Analyze resume text
-        resume_lower = resume_text.lower()
-        matched_keywords = [keyword for keyword in job_keywords if keyword.lower() in resume_lower]
-        
-        # Calculate keyword score (40% of total)
-        keyword_score = min(100, (len(matched_keywords) / len(job_keywords)) * 100) if job_keywords else 0
-        
-        # Analyze format and structure
-        format_score = analyze_resume_format(resume_text)
-        
-        # Analyze readability
-        readability_score = analyze_readability(resume_text)
-        
-        # Analyze content structure
-        structure_score = analyze_content_structure(resume_text)
-        
-        # Calculate overall ATS score (weighted average)
-        ats_score = (
-            keyword_score * 0.4 +      # 40% - Keywords
-            format_score * 0.3 +       # 30% - Format
-            readability_score * 0.2 +  # 20% - Readability
-            structure_score * 0.1      # 10% - Structure
-        )
-        
-        # Generate improvement suggestions
-        missing_keywords = [keyword for keyword in job_keywords if keyword.lower() not in resume_lower]
-        improvement_tips = generate_improvement_tips(resume_text, keyword_score, format_score, readability_score, structure_score)
-        
-        return {
-            "ats_score": round(ats_score, 2),
-            "keyword_score": round(keyword_score, 2),
-            "format_score": round(format_score, 2),
-            "readability_score": round(readability_score, 2),
-            "structure_score": round(structure_score, 2),
-            "matched_keywords": matched_keywords,
-            "missing_keywords": missing_keywords[:10],  # Top 10 missing keywords
-            "total_keywords_checked": len(job_keywords),
-            "keywords_matched": len(matched_keywords),
-            "improvement_tips": improvement_tips,
-            "score_breakdown": {
-                "keywords": f"{keyword_score:.1f}/100",
-                "format": f"{format_score:.1f}/100",
-                "readability": f"{readability_score:.1f}/100",
-                "structure": f"{structure_score:.1f}/100"
-            }
-        }
+        return _analyze_ats_internal(resume_text, job_title)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing ATS compatibility: {str(e)}")
 
@@ -368,30 +522,7 @@ async def skill_gap_analysis(
     Analyze skill gaps for target job
     """
     try:
-        # Extract skills from resume
-        doc = nlp(resume_text)
-        resume_skills = extract_skills_from_text(resume_text)
-        
-        # Get required skills for target job
-        required_skills = get_required_skills_for_job(target_job)
-        
-        # Find skill gaps
-        missing_skills = [skill for skill in required_skills if skill.lower() not in [s.lower() for s in resume_skills]]
-        existing_skills = [skill for skill in required_skills if skill.lower() in [s.lower() for s in resume_skills]]
-        
-        # Calculate skill match percentage
-        skill_match_percentage = (len(existing_skills) / len(required_skills)) * 100 if required_skills else 0
-        
-        return {
-            "resume_skills": resume_skills,
-            "required_skills": required_skills,
-            "missing_skills": missing_skills,
-            "existing_skills": existing_skills,
-            "skill_match_percentage": round(skill_match_percentage, 2),
-            "total_skills_required": len(required_skills),
-            "skills_you_have": len(existing_skills),
-            "skills_to_learn": len(missing_skills)
-        }
+        return _skill_gap_internal(resume_text, target_job)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing skill gaps: {str(e)}")
 
@@ -403,6 +534,11 @@ async def improve_bullet_points(
     """
     Improve bullet points using AI
     """
+    if not groq_client:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI service unavailable. Please configure GROQ_API_KEY in .env file."
+        )
     try:
         improved_points = []
         
@@ -802,18 +938,18 @@ async def comprehensive_analysis(
         # Extract text
         resume_text = extract_text_from_file(file_path)
         
-        # ATS Analysis
-        ats_result = await analyze_ats_compatibility(resume_text, job_title)
+        # ATS Analysis - using internal function
+        ats_result = _analyze_ats_internal(resume_text, job_title)
         
-        # Skill Gap Analysis
-        skill_gap_result = await skill_gap_analysis(resume_text, job_title)
+        # Skill Gap Analysis - using internal function
+        skill_gap_result = _skill_gap_internal(resume_text, job_title)
         
-        # Improve bullet points
+        # Improve bullet points - using internal function
         bullet_points = extract_bullet_points(resume_text)
-        bullet_improvements = await improve_bullet_points(bullet_points, job_title)
+        bullet_improvements = _improve_bullets_internal(bullet_points, job_title)
         
-        # Get recommendations
-        recommendations = await recommend_projects_courses(skill_gap_result['missing_skills'], job_title)
+        # Get recommendations - using internal function
+        recommendations = _recommend_internal(skill_gap_result['missing_skills'], job_title)
         
         # Clean up temp file
         os.remove(file_path)
@@ -880,6 +1016,59 @@ def extract_bullet_points(text: str) -> List[str]:
             bullet_points.append(line)
     
     return bullet_points[:10]  # Return top 10 bullet points
+
+# Resume Templates Configuration
+RESUME_TEMPLATES = {
+    "professional": {
+        "name": "Professional",
+        "description": "Clean and professional layout suitable for most industries",
+        "font_size": 11,
+        "line_spacing": 1.2,
+        "margins": (0.75, 0.75, 0.75, 0.75),  # left, right, top, bottom in inches
+        "section_spacing": 0.2
+    },
+    "modern": {
+        "name": "Modern",
+        "description": "Contemporary design with emphasis on visual hierarchy",
+        "font_size": 10,
+        "line_spacing": 1.3,
+        "margins": (0.5, 0.5, 0.5, 0.5),
+        "section_spacing": 0.15
+    },
+    "classic": {
+        "name": "Classic",
+        "description": "Traditional format preferred by conservative industries",
+        "font_size": 12,
+        "line_spacing": 1.5,
+        "margins": (1.0, 1.0, 1.0, 1.0),
+        "section_spacing": 0.25
+    }
+}
+
+# In-memory storage for resume versions
+resume_versions = {}
+
+def save_resume_versions():
+    """Save resume versions to a JSON file"""
+    try:
+        os.makedirs("data", exist_ok=True)
+        with open("data/resume_versions.json", "w") as f:
+            json.dump(resume_versions, f, indent=2)
+    except Exception as e:
+        print(f"Error saving resume versions: {str(e)}")
+
+def load_resume_versions():
+    """Load resume versions from JSON file"""
+    try:
+        if os.path.exists("data/resume_versions.json"):
+            with open("data/resume_versions.json", "r") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading resume versions: {str(e)}")
+    return {}
+
+# Load existing resume versions on startup
+resume_versions = load_resume_versions()
 
 # PDF Resume Builder Endpoints
 @app.get("/get-resume-templates")

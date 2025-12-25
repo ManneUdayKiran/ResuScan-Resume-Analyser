@@ -2,7 +2,6 @@
 
 A comprehensive resume analysis tool that helps job seekers optimize their resumes for Applicant Tracking Systems (ATS) and provides personalized improvement suggestions.
 
-visit my app at:https://frontend-two-pi-49.vercel.app/
 
 ## 🚀 Features
 

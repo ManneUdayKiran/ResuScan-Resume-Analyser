@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Menu, Button, Drawer, Space, Typography } from "antd";
 import {
   HomeOutlined,
@@ -9,7 +9,7 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const { Header: AntHeader } = Layout;
 const { Title } = Typography;
@@ -18,6 +18,27 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  const { scrollY } = useScroll();
+  const headerBackground = useTransform(
+    scrollY,
+    [0, 100],
+    ["rgba(15, 23, 42, 0.95)", "rgba(15, 23, 42, 0.98)"]
+  );
+  const headerShadow = useTransform(
+    scrollY,
+    [0, 100],
+    ["0 2px 8px rgba(0,0,0,0.1)", "0 4px 20px rgba(0,0,0,0.2)"]
+  );
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const menuItems = [
     {
@@ -64,81 +85,129 @@ const Header = () => {
 
   return (
     <>
-      <AntHeader
+      <motion.div
         style={{
           position: "fixed",
           top: 0,
           width: "100%",
           zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          padding: "0 24px",
-          backgroundColor: "#1976d2",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          background: headerBackground,
+          boxShadow: headerShadow,
+          backdropFilter: scrolled ? "blur(10px)" : "none",
+          WebkitBackdropFilter: scrolled ? "blur(10px)" : "none",
         }}
       >
-
-        <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{ display: "flex", alignItems: "center" }}
-          >
-            <BarChartOutlined
-              style={{ fontSize: "24px", marginRight: "12px", color: "#fff" }}
-            />
-            <Title
-              level={3}
-              style={{
-                margin: 0,
-                color: "#fff",
-                fontWeight: "bold",
-                fontSize: "24px",
-              }}
-            >
-              ResuScan
-            </Title>
-          </motion.div>
-          {/* Desktop Menu - now immediately after the title */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="desktop-menu"
-            style={{ display: "none", marginLeft: 24, flex: 1, minWidth: 0 }}
-          >
-            <Menu
-              theme="dark"
-              mode="horizontal"
-              selectedKeys={[location.pathname]}
-              items={menuItems}
-              style={{
-                backgroundColor: "transparent",
-                border: "none",
-                lineHeight: "64px",
-                flex: 1,
-                minWidth: 0,
-                justifyContent: "flex-start"
-              }}
-            />
-          </motion.div>
-        </div>
-
-        {/* Mobile Menu Button */}
-        <Button
-          type="text"
-          icon={mobileMenuVisible ? <CloseOutlined /> : <MenuOutlined />}
-          onClick={toggleMobileMenu}
-          className="mobile-menu-button"
+        <AntHeader
           style={{
-            color: "#fff",
-            fontSize: "18px",
-            display: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            padding: "0 24px",
+            backgroundColor: "transparent",
+            height: scrolled ? "60px" : "64px",
+            transition: "height 0.3s ease",
           }}
-        />
-      </AntHeader>
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, ease: [0.43, 0.13, 0.23, 0.96] }}
+              whileHover={{ scale: 1.05 }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+              }}
+              onClick={() => navigate("/")}
+            >
+              <motion.div
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+              >
+                <BarChartOutlined
+                  style={{
+                    fontSize: scrolled ? "22px" : "24px",
+                    marginRight: "12px",
+                    color: "#fff",
+                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                    transition: "font-size 0.3s ease",
+                  }}
+                />
+              </motion.div>
+              <Title
+                level={3}
+                style={{
+                  margin: 0,
+                  color: "#fff",
+                  fontWeight: "bold",
+                  fontSize: scrolled ? "22px" : "24px",
+                  textShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                  transition: "font-size 0.3s ease",
+                }}
+              >
+                ResuScan
+              </Title>
+            </motion.div>
+            {/* Desktop Menu - now immediately after the title */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.15,
+                ease: [0.43, 0.13, 0.23, 0.96],
+              }}
+              className="desktop-menu"
+              style={{ display: "none", marginLeft: 24, flex: 1, minWidth: 0 }}
+            >
+              <Menu
+                theme="dark"
+                mode="horizontal"
+                selectedKeys={[location.pathname]}
+                items={menuItems}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "none",
+                  lineHeight: scrolled ? "60px" : "64px",
+                  flex: 1,
+                  minWidth: 0,
+                  justifyContent: "flex-start",
+                  transition: "line-height 0.3s ease",
+                }}
+              />
+            </motion.div>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              type="text"
+              icon={mobileMenuVisible ? <CloseOutlined /> : <MenuOutlined />}
+              onClick={toggleMobileMenu}
+              className="mobile-menu-button"
+              style={{
+                color: "#fff",
+                fontSize: "18px",
+                display: "none",
+              }}
+            />
+          </motion.div>
+        </AntHeader>
+      </motion.div>
 
       {/* Mobile Drawer */}
       <Drawer
@@ -152,7 +221,7 @@ const Header = () => {
         onClose={() => setMobileMenuVisible(false)}
         open={mobileMenuVisible}
         width={280}
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
       >
         <Menu
           mode="vertical"
@@ -162,7 +231,7 @@ const Header = () => {
         />
       </Drawer>
 
-      <style jsx>{`
+      <style>{`
         @media (min-width: 768px) {
           .desktop-menu {
             display: block !important;
