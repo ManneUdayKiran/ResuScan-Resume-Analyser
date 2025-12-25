@@ -1,0 +1,19 @@
+# Auto-assign configuration
+
+# Reviewers to be assigned
+addReviewers: true
+reviewers:
+  - udaykiran-2002
+
+# Assignees (PR author will be assigned)
+addAssignees: author
+
+# Number of reviewers to assign
+numberOfReviewers: 1
+
+# Skip if assignees/reviewers already exist
+skipKeywords:
+  - wip
+  - WIP
+  - draft
+  - Draft

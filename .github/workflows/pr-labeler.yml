@@ -1,0 +1,59 @@
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  labeler:
+    name: Label PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Label PR based on files changed
+        uses: actions/labeler@v5
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/labeler.yml
+
+  size-label:
+    name: PR Size Label
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Label PR by size
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: "size/XS"
+          xs_max_size: 10
+          s_label: "size/S"
+          s_max_size: 50
+          m_label: "size/M"
+          m_max_size: 200
+          l_label: "size/L"
+          l_max_size: 500
+          xl_label: "size/XL"
+          fail_if_xl: false
+          message_if_xl: >
+            This PR is quite large! Consider breaking it into smaller PRs for easier review.
+
+  auto-assign:
+    name: Auto Assign
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Auto-assign PR author
+        uses: kentaro-m/auto-assign-action@v2.0.0
+        with:
+          configuration-path: ".github/auto-assign.yml"

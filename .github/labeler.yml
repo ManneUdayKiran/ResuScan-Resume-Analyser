@@ -1,0 +1,72 @@
+# Label configuration for PR Labeler action
+
+# Backend labels
+backend:
+  - changed-files:
+      - any-glob-to-any-file: "backend/**/*"
+
+python:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.py"
+
+# Frontend labels
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: "frontend/**/*"
+
+javascript:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.js"
+          - "**/*.jsx"
+          - "**/*.ts"
+          - "**/*.tsx"
+
+# Configuration changes
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.json"
+          - "**/*.yml"
+          - "**/*.yaml"
+          - "**/*.toml"
+          - "**/*.env*"
+
+# Documentation
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**/*"
+
+# CI/CD
+ci/cd:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**/*"
+          - "Dockerfile*"
+          - "docker-compose*"
+
+# Dependencies
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/requirements*.txt"
+          - "**/package*.json"
+          - "**/pyproject.toml"
+
+# Styles
+styles:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.css"
+          - "**/*.scss"
+          - "**/*.sass"
+
+# Tests
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*test*"
+          - "**/*spec*"
+          - "**/tests/**/*"

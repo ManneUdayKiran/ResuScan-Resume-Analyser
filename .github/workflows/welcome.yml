@@ -1,0 +1,86 @@
+name: Welcome New Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    name: Welcome
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Welcome new issue author
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const author = issue.user.login;
+
+            // Check if this is the author's first issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: author,
+              state: 'all'
+            });
+
+            if (issues.data.length === 1) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `👋 Welcome @${author}! Thanks for opening your first issue in ResuScan!
+
+            We appreciate you taking the time to report this. A maintainer will review your issue soon.
+
+            In the meantime:
+            - ⭐ Consider starring the repo if you find it useful
+            - 📖 Check out our [README](https://github.com/${context.repo.owner}/${context.repo.repo}#readme) for more info
+            - 💬 Feel free to join our discussions!
+
+            Happy resume scanning! 📄✨`
+              });
+            }
+
+      - name: Welcome new PR author
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            // Check if this is the author's first PR
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all'
+            });
+
+            const authorPRs = prs.data.filter(p => p.user.login === author);
+
+            if (authorPRs.length === 1) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `🎉 Welcome @${author}! Thanks for opening your first PR in ResuScan!
+
+            We're excited to review your contribution! Here's what happens next:
+
+            1. ✅ Automated checks will run on your code
+            2. 👀 A maintainer will review your changes
+            3. 💬 We may request some changes or clarifications
+            4. 🚀 Once approved, your PR will be merged!
+
+            Thank you for contributing to open source! 🙌`
+              });
+            }
