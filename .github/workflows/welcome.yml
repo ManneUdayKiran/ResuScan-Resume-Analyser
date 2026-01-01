@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Welcome new issue author
         if: github.event_name == 'issues'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const issue = context.payload.issue;
@@ -52,7 +52,7 @@ jobs:
 
       - name: Welcome new PR author
         if: github.event_name == 'pull_request_target'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;
